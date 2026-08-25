@@ -1,0 +1,1 @@
+"""SkirmishCore Python Package."""
