@@ -126,4 +126,16 @@ __pycache__/
 #
 # ==================
 .cache
+.orbis-cache
+.pytest_cache
 compile_commands.json
+
+# SkirmishCore custom inclusions
+!/docker-compose.override.yml
+!/modules/mod-playerbots
+!/modules/mod-ah-bot
+!/modules/mod-individual-progression
+!/modules/mod-acore-mall
+!/data/sql/custom/*
+!/env/dist/etc
+!/env/dist/etc/**

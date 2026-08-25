@@ -14,6 +14,9 @@
 *.patch  whitespace=-trailing-space eol=lf
 *.diff   whitespace=-trailing-space eol=lf
 
+# Binary files - preserve raw bytes
+*.png    binary
+
 # Standard to msysgit
 *.doc    diff=astextplain
 *.DOC    diff=astextplain
