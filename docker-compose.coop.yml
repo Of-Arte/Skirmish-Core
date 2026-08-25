@@ -1,0 +1,12 @@
+# docker-compose.coop.yml
+# Use menu.cmd option [7] Configure Co-Op / LAN IP to automatically enable co-op mode
+# or copy this file to docker-compose.override.yml in the repository root directory
+
+services:
+  ac-authserver:
+    ports:
+      - "3724:3724"
+  ac-worldserver:
+    ports:
+      - "8085:8085"
+      - "7878:7878"
