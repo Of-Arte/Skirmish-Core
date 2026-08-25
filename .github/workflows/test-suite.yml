@@ -1,0 +1,37 @@
+name: Pytest Suite
+
+on:
+  push:
+    branches: [ main, master, skirmishcore, Playerbot ]
+  pull_request:
+    branches: [ main, master, skirmishcore, Playerbot ]
+
+jobs:
+  test:
+    name: Run Pytest Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
+
+      - name: Prepare test environment config
+        run: |
+          mkdir -p env/dist/etc/modules
+          cp modules/mod-playerbots/conf/playerbots.conf.dist env/dist/etc/modules/playerbots.conf
+
+      - name: Run Pytest Suite
+        run: |
+          PYTHONPATH=. pytest tests/
