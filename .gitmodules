@@ -1,0 +1,12 @@
+[submodule "modules/mod-playerbots"]
+	path = modules/mod-playerbots
+	url = https://github.com/mod-playerbots/mod-playerbots.git
+[submodule "modules/mod-ah-bot"]
+	path = modules/mod-ah-bot
+	url = https://github.com/azerothcore/mod-ah-bot.git
+[submodule "modules/mod-individual-progression"]
+	path = modules/mod-individual-progression
+	url = https://github.com/ZhengPeiRu21/mod-individual-progression.git
+[submodule "modules/mod-acore-mall"]
+	path = modules/mod-acore-mall
+	url = https://github.com/smokeydouglas/Acore_Mall.git
