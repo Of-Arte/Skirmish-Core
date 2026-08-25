@@ -18,7 +18,11 @@ from typing import List, Optional, Callable
 # ==============================================================================
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CORE_DIR = REPO_ROOT
-CONF_FILE = os.path.join(CORE_DIR, "env", "dist", "etc", "modules", "playerbots.conf")
+CONF_DIR = os.path.join(CORE_DIR, "env", "dist", "etc", "modules")
+CONF_FILE = os.path.join(CONF_DIR, "playerbots.conf")
+AHBOT_CONF_FILE = os.path.join(CONF_DIR, "mod_ahbot.conf")
+IP_CONF_FILE = os.path.join(CONF_DIR, "individualProgression.conf")
+
 
 
 def safe_input(prompt: str = "") -> str:
@@ -360,22 +364,23 @@ class DockerService:
 
 class ConfigManager:
     @staticmethod
-    def update_conf_values(updates: dict) -> bool:
+    def update_conf_values(updates: dict, conf_path: str = CONF_FILE) -> bool:
         """
-        Safely updates playerbots.conf key-value pairs using python regex and UTF-8 encoding.
+        Safely updates configuration key-value pairs using python regex and UTF-8 encoding.
         `updates` maps regex patterns / key names to new values.
         """
-        if not os.path.exists(CONF_FILE):
-            os.makedirs(os.path.dirname(CONF_FILE), exist_ok=True)
-            dist_file = os.path.join(CORE_DIR, "modules", "mod-playerbots", "conf", "playerbots.conf.dist")
+        if not os.path.exists(conf_path):
+            os.makedirs(os.path.dirname(conf_path), exist_ok=True)
+            filename = os.path.basename(conf_path)
+            dist_file = os.path.join(CONF_DIR, filename + ".dist")
             if os.path.exists(dist_file):
-                shutil.copyfile(dist_file, CONF_FILE)
+                shutil.copyfile(dist_file, conf_path)
             else:
-                print(f"Error: Configuration file not found at {CONF_FILE}")
+                print(f"Error: Configuration file not found at {conf_path}")
                 return False
 
         try:
-            with open(CONF_FILE, "r", encoding="utf-8") as f:
+            with open(conf_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             for key, val in updates.items():
@@ -385,13 +390,13 @@ class ConfigManager:
                 else:
                     content += f"\n{key} = {val}\n"
 
-
-            with open(CONF_FILE, "w", encoding="utf-8") as f:
+            with open(conf_path, "w", encoding="utf-8") as f:
                 f.write(content)
             return True
         except Exception as e:
             print(f"Error updating configuration file: {e}")
             return False
+
 
 
 # ==============================================================================
@@ -741,6 +746,52 @@ def custom_skirmish_action(context: dict):
     skirmish_preset_action(min_lvl, max_lvl)
 
 
+def ahbot_setup_action(context: dict):
+    print("\n=====================================================")
+    print("          AUCTION HOUSE BOT (AHBOT) SETUP")
+    print("=====================================================")
+    print("AH Bot automatically posts and bids on Auction House items.")
+    print("To run AH Bot, you can assign it to a specific character GUID.")
+    print("\nOptions:")
+    print("  1. Enable AH Bot (Seller & Buyer)")
+    print("  2. Disable AH Bot")
+    print("  3. Set Character GUID")
+    print("  0. Back")
+
+    choice = safe_input("\nSelect an option [0-3]: ").strip()
+    if choice == "1":
+        guid = safe_input("Enter Character GUID for AH Bot (or press Enter to keep current): ").strip()
+        updates = {
+            "AuctionHouseBot.EnableSeller": "true",
+            "AuctionHouseBot.Buyer.Enabled": "true"
+        }
+        if guid:
+            updates["AuctionHouseBot.GUIDs"] = guid
+        if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
+            DockerService.reload_worldserver_config()
+            print("\n=====================================================")
+            print(" SUCCESS: AH Bot Enabled!")
+            print("=====================================================")
+    elif choice == "2":
+        updates = {
+            "AuctionHouseBot.EnableSeller": "false",
+            "AuctionHouseBot.Buyer.Enabled": "false"
+        }
+        if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
+            DockerService.reload_worldserver_config()
+            print("\n=====================================================")
+            print(" SUCCESS: AH Bot Disabled!")
+            print("=====================================================")
+    elif choice == "3":
+        guid = safe_input("Enter Character GUID for AH Bot: ").strip()
+        if guid:
+            if ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": guid}, conf_path=AHBOT_CONF_FILE):
+                DockerService.reload_worldserver_config()
+                print("\n=====================================================")
+                print(f" SUCCESS: AH Bot Character GUID set to {guid}!")
+                print("=====================================================")
+
+
 # ==============================================================================
 # MENU BUILDER & FACTORY
 # ==============================================================================
@@ -796,7 +847,9 @@ def create_application_menus() -> BaseMenu:
     bot_menu.add_option(SubMenuOption("1", "Adjust Bot Population Density", "Set bot counts based on performance impact", pop_menu))
     bot_menu.add_option(SubMenuOption("2", "Open World RPG Activity Presets", "Tune bot open world behaviors (Questing, Grinding, PvP, Idling)", rpg_menu))
     bot_menu.add_option(ActionOption("3", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action))
+    bot_menu.add_option(ActionOption("4", "Auction House Bot Setup", "Optionally enable or configure AH Bot character/GUID", ahbot_setup_action))
     main_menu.add_option(SubMenuOption("4", "Bot Management & Population", "Reset bots, adjust population, or set open world RPG activity", bot_menu))
+
 
     # 5. Multi-Player Setup
     main_menu.add_option(ActionOption("5", "Multi-Player Setup", "Let friends join", coop_action))

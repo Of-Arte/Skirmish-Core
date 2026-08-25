@@ -95,7 +95,14 @@ If you experience difficulties logging into the server:
 
 All server and module configuration override files are located under the `env/dist/etc/` directory.
 
+### Auction House Bot Setup (Optional)
+By default, standard playerbots interact with the Auction House naturally. If you wish to enable the dedicated `mod-ah-bot` system to automatically populate or buyout AH listings:
+1. Launch `menu.cmd` or `python3 skirmish/menu.py`.
+2. Select **4. Bot Management & Population** -> **4. Auction House Bot Setup**.
+3. Choose **1. Enable AH Bot** (or option 3 to set a specific character GUID).
+
 For details on generating configuration files, tuning bot progression, configuring Level 1 fresh server starts, and resetting bot accounts, see the dedicated [docs/CONFIGURATION.md](docs/CONFIGURATION.md) guide.
+
 
 ---
 
