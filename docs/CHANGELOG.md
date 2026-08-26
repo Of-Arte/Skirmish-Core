@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2026-08-26
+
+### Submodule Resolution & Auto-Healing
+- Resolved dangling submodule pointer by publishing `mod-acore-mall` to [Of-Arte/mod-acore-mall](https://github.com/Of-Arte/mod-acore-mall) and updating `.gitmodules`.
+- Added automatic submodule detection and initialization (`DockerService.ensure_submodules()`) to `skirmish/menu.py` before Docker image builds.
+- Integrated submodule auto-healing checks into the Control Hub System Doctor / Health Checker.
+- Updated `README.md` installation instructions with `--recurse-submodules` cloning guidance.
+
 ## [1.0.2] - 2026-08-25
+
 
 ### Module Auto-Import & Fixes
 - Added `include.sh` and `conf/conf.sh.dist` for `mod-acore-mall` to enable automatic native database imports for GM Island vendors on fresh builds.

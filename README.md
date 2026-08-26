@@ -41,12 +41,20 @@ SkirmishCore arrives pre-configured out of the box for a progressive, active sin
 
 Follow these steps in order to install, configure, and launch your server.
 
-### 1. Prerequisites & System Requirements
+### 1. Clone Repository
+Clone the repository recursively to fetch all included modules:
+```bash
+git clone --recurse-submodules https://github.com/Of-Arte/SkirmishCore-wotlk.git
+```
+*(If cloned without `--recurse-submodules`, the SkirmishCore Control Hub menu will automatically detect and initialize submodules on launch).*
+
+### 2. Prerequisites & System Requirements
 - **Docker Desktop**: Host container engine for running authserver, worldserver, and database instances.
 - **Python 3.8+**: Required runtime for the object-oriented SkirmishCore Control Hub menu scripts.
 - **Pytest**: Optional. Test framework used for developer test suite (`pip install -r tests/requirements-test.txt`).
 
-### 2. Launch Control Hub Menu
+
+### 3. Launch Control Hub Menu
 - **Windows (Primary)**: Double-click or run `menu.cmd` from the root directory:
   ```cmd
   menu.cmd
@@ -56,17 +64,17 @@ Follow these steps in order to install, configure, and launch your server.
   python3 skirmish/menu.py
   ```
 
-### 3. Build Server Image
+### 4. Build Server Image
 Before running the server for the first time, execute the build step to compile and prepare the containers:
 
 1. In the main menu, select **6. Build Server**.
 2. Wait for the compilation and build process to complete.
 
-### 4. Start Server
+### 5. Start Server
 1. Select **1. Server Controls** -> **1. Start Server**.
 2. On first startup, the database assembler will automatically build and seed the AzerothCore database from scratch (including system accounts and auctioneer data).
 
-### 5. Creating Accounts & Setting GM Rank
+### 6. Creating Accounts & Setting GM Rank
 Once the server is running, create your player/admin accounts using the interactive admin console:
 
 1. Select **1. Server Controls** -> **3. Admin Console & Accounts**.
@@ -77,7 +85,8 @@ Once the server is running, create your player/admin accounts using the interact
    ```
    *Use GM rank `3` for Admin or `0` for standard player rank.*
 
-### 6. Connecting & Troubleshooting
+### 7. Connecting & Troubleshooting
+
 If you experience difficulties logging into the server:
 1. **Worldserver Startup Delay**: The worldserver container can take 5–15 minutes on first launch to initialize DBC/maps, load SQL updates, and spawn Playerbots. Check startup progress by selecting **1. Server Controls** -> **4. Live Logs** -> **1. Worldserver** and wait until you see `World initialized`.
 2. **Realmlist Configuration**: Ensure your WoW 3.3.5a client `Data/enUS/realmlist.wtf` or `Data/enGB/realmlist.wtf` is set to:

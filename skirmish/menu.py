@@ -200,8 +200,9 @@ class HealthChecker:
         issues_found = 0
 
         # 1. System & Python Environment + RAM Check
-        print("[1/6] System & RAM Diagnostics")
+        print("[1/6] System & Python Environment & RAM Diagnostics")
         py_ver = sys.version.split()[0]
+
         print(f"  [OK] Python Runtime : {py_ver} ({sys.executable})")
 
         try:
@@ -240,6 +241,25 @@ class HealthChecker:
         else:
             print(f"  [WARN] Playerbots Config : Missing ({conf_file})")
             issues_found += 1
+
+        # Check submodules
+        submodules = ["mod-playerbots", "mod-ah-bot", "mod-individual-progression", "mod-acore-mall"]
+        empty_submodules = []
+        for mod in submodules:
+            mod_path = os.path.join(CORE_DIR, "modules", mod)
+            if not os.path.exists(mod_path) or len(os.listdir(mod_path)) <= 1:
+                empty_submodules.append(mod)
+
+        if empty_submodules:
+            print(f"  [FAIL] Git Submodules : Uninitialized or empty modules ({', '.join(empty_submodules)})")
+            print("         -> Auto-healing git submodules now...", flush=True)
+            if DockerService.ensure_submodules():
+                print("         [OK] Submodules successfully restored!")
+            else:
+                issues_found += 1
+        else:
+            print("  [OK] Git Submodules : All module folders populated")
+
 
         # 3. Docker CLI & Daemon Status
         print("\n[3/6] Docker Engine & Daemon Health")
@@ -437,8 +457,27 @@ class DockerService:
             return False
 
     @staticmethod
+    def ensure_submodules() -> bool:
+        """Ensures git submodules in modules/ are initialized and populated."""
+        if shutil.which("git") and os.path.exists(os.path.join(CORE_DIR, ".gitmodules")):
+            print("Checking git submodules in modules/...")
+            try:
+                res = subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=CORE_DIR, capture_output=True, text=True)
+                if res.returncode == 0:
+                    print("  [OK] Git submodules are initialized and up to date.")
+                    return True
+                else:
+                    print(f"  [WARN] Git submodule update returned non-zero code: {res.stderr.strip()}")
+                    return False
+            except Exception as e:
+                print(f"  [WARN] Could not update git submodules: {e}")
+                return False
+        return True
+
+    @staticmethod
     def build_images() -> bool:
         """Rebuilds docker compose container images directly."""
+        DockerService.ensure_submodules()
         print("\nBuilding SkirmishCore Docker images...")
         try:
             res = subprocess.run(["docker", "compose", "build"], cwd=CORE_DIR)
@@ -451,6 +490,7 @@ class DockerService:
         except Exception as e:
             print(f"Error building Docker images: {e}")
             return False
+
 
     @staticmethod
     def run_diagnostics():
