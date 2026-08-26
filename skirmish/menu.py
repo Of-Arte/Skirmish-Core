@@ -1429,12 +1429,13 @@ def create_application_menus() -> BaseMenu:
     server_menu = BaseMenu("SERVER CONTROLS & ADMIN", parent=main_menu)
     server_menu.add_option(ActionOption("1", "Start Server", "Turn it on", start_server_action))
     server_menu.add_option(ActionOption("2", "Stop Server", "Turn it off", stop_server_action))
-    server_menu.add_option(ActionOption("3", "Create Game Account Wizard", "Automated account creation with GM status selection", create_account_action))
-    server_menu.add_option(ActionOption("4", "Admin Console", "Open interactive worldserver terminal console", admin_console_action, pause_after=False))
-    server_menu.add_option(ActionOption("5", "Live Logs", "See what the server is doing", logs_action, pause_after=False))
-    server_menu.add_option(ActionOption("6", "Health Check", "Make sure everything is running", doctor_action))
-    server_menu.add_option(ActionOption("7", "Wipe Server Setup", "Delete all containers, database volumes, & images (requires rebuild)", wipe_server_action))
-    main_menu.add_option(SubMenuOption("1", "Server Controls", "Start, stop, logs, and account setup", server_menu))
+    server_menu.add_option(ActionOption("3", "Build Server", "Rebuild Docker container images", build_action))
+    server_menu.add_option(ActionOption("4", "Create Game Account Wizard", "Automated account creation with GM status selection", create_account_action))
+    server_menu.add_option(ActionOption("5", "Admin Console", "Open interactive worldserver terminal console", admin_console_action, pause_after=False))
+    server_menu.add_option(ActionOption("6", "Live Logs", "See what the server is doing", logs_action, pause_after=False))
+    server_menu.add_option(ActionOption("7", "Health Check", "Make sure everything is running", doctor_action))
+    server_menu.add_option(ActionOption("8", "Wipe Server Setup", "Delete all containers, database volumes, & images (requires rebuild)", wipe_server_action))
+    main_menu.add_option(SubMenuOption("1", "Server Controls", "Start, stop, build, logs, and account setup", server_menu))
 
 
     # 2. Skirmish Mode SubMenu
@@ -1483,9 +1484,6 @@ def create_application_menus() -> BaseMenu:
 
     # 5. Multi-Player Setup
     main_menu.add_option(ActionOption("5", "Multi-Player Setup", "Let friends join", coop_action))
-
-    # 6. Build Server
-    main_menu.add_option(ActionOption("6", "Build Server", "Run a fresh build", build_action))
 
     return main_menu
 

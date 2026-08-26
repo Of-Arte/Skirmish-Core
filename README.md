@@ -67,7 +67,7 @@ git clone https://github.com/Of-Arte/Skirmish-Core.git
 ### 4. Build Server Image
 Before running the server for the first time, execute the build step to compile and prepare the containers:
 
-1. In the main menu, select **6. Build Server**.
+1. Select **1. Server Controls** -> **3. Build Server**.
 2. Wait for the compilation and build process to complete.
 
 ### 5. Start Server
@@ -75,20 +75,15 @@ Before running the server for the first time, execute the build step to compile 
 2. On first startup, the database assembler will automatically build and seed the AzerothCore database from scratch (including system accounts and auctioneer data).
 
 ### 6. Creating Accounts & Setting GM Rank
-Once the server is running, create your player/admin accounts using the interactive admin console:
+Once the server is running, create player/admin accounts using the interactive wizard or admin console:
 
-1. Select **1. Server Controls** -> **3. Admin Console & Accounts**.
-2. In the opened console window, run:
-   ```text
-   account create <username> <password>
-   account setgm <username> 3 -1
-   ```
-   *Use GM rank `3` for Admin or `0` for standard player rank.*
+1. Select **1. Server Controls** -> **4. Create Game Account Wizard** (or **5. Admin Console**).
+2. Follow the prompt to set username, password, and GM rank level (0 = Player, 3 = Admin).
 
 ### 7. Connecting & Troubleshooting
 
 If you experience difficulties logging into the server:
-1. **Worldserver Startup Delay**: The worldserver container can take 5–15 minutes on first launch to initialize DBC/maps, load SQL updates, and spawn Playerbots. Check startup progress by selecting **1. Server Controls** -> **4. Live Logs** -> **1. Worldserver** and wait until you see `World initialized`.
+1. **Worldserver Startup Delay**: The worldserver container can take 5–15 minutes on first launch to initialize DBC/maps, load SQL updates, and spawn Playerbots. Check startup progress by selecting **1. Server Controls** -> **6. Live Logs** and wait until you see `World initialized`.
 2. **Realmlist Configuration**: Ensure your WoW 3.3.5a client `Data/enUS/realmlist.wtf` or `Data/enGB/realmlist.wtf` is set to:
    ```text
    set realmlist 127.0.0.1

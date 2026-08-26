@@ -93,11 +93,18 @@ def test_server_controls_menu_back():
 
 def test_create_account_action_offline_error():
     """Verify Automated Account Creation Wizard reports error when server stack is offline."""
-    stdout, stderr, code = run_menu_py_with_inputs(["1", "3", "testgm", "pass123", "3", "n", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "4", "testgm", "pass123", "3", "n", "", "0", "0"])
     assert code == 0
     assert "AUTOMATED ACCOUNT CREATION WIZARD" in stdout
     assert "ERROR: Account 'testgm' could not be created!" in stdout
     assert "Server stack and database containers are OFFLINE" in stdout
+
+
+def test_build_server_option():
+    """Verify Option 1 -> Option 3 executes DockerService.build_images()."""
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "3", "", "0", "0"])
+    assert code == 0
+    assert "Building SkirmishCore Docker images..." in stdout
 
 
 def test_create_account_action_online_mock(monkeypatch):
@@ -124,8 +131,8 @@ def test_create_account_action_online_mock(monkeypatch):
 
 
 def test_health_check_option():
-    """Verify Option 1 -> Option 6 executes HealthChecker diagnostics."""
-    stdout, stderr, code = run_menu_py_with_inputs(["1", "6", "0", "0"])
+    """Verify Option 1 -> Option 7 executes HealthChecker diagnostics."""
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "7", "0", "0"])
     assert code == 0
     assert "SKIRMISHCORE COMPREHENSIVE HEALTH CHECK" in stdout
     assert "System & Python Environment" in stdout
@@ -134,7 +141,7 @@ def test_health_check_option():
 
 def test_wipe_server_action_cancel():
     """Verify entering anything other than 'delete' cancels wiping the server."""
-    stdout, stderr, code = run_menu_py_with_inputs(["1", "7", "no", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "8", "no", "", "0", "0"])
     assert code == 0
     assert "WARNING: WIPE & DELETE SERVER SETUP" in stdout
     assert "Wipe canceled. Confirmation did not match 'delete'." in stdout
@@ -142,7 +149,7 @@ def test_wipe_server_action_cancel():
 
 def test_wipe_server_action_confirm():
     """Verify typing 'delete' triggers DockerService.wipe_stack()."""
-    stdout, stderr, code = run_menu_py_with_inputs(["1", "7", "delete", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "8", "delete", "", "0", "0"])
     assert code == 0
     assert "WARNING: WIPE & DELETE SERVER SETUP" in stdout
     assert "Wiping SkirmishCore Docker stack, volumes, and images..." in stdout
