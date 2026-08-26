@@ -8,11 +8,12 @@ All notable changes to this project will be documented in this file.
 - Updated `skirmish/menu.py` Server Stop action to execute `docker compose down` directly without prematurely aborting on container status checks.
 - Added **Wipe Server Setup** option to `skirmish/menu.py` (Option 7 in Server Controls & Admin) to remove containers, database volumes (`-v`), networks, and built images (`--rmi all`), requiring explicit `"delete"` confirmation before execution.
 - Added **Automated Account Creation Wizard** to `skirmish/menu.py` (Option 3 in Server Controls & Admin) supporting custom username, password, and GM rank selection (Player, Moderator, GameMaster, Admin).
+- Implemented native Python **SRP6 Salt & Verifier Generator** (`generate_srp6_verifier`) matching AzerothCore WotLK authentication algorithms in `skirmish/menu.py`, enabling direct MySQL account provisioning that supports immediate WoW client login.
 - Configured `AiPlayerbot.AutoTeleportForLevel = 1` as default in `env/dist/etc/modules/playerbots.conf` so high-level bots automatically teleport to level-appropriate zones upon spawn/login.
 - Added **Bot Starting Level Mode** option to Option 4 (Bot Management & Population) in `skirmish/menu.py`, enabling users to toggle forced Level 1 starter spawns (`DisableRandomLevels = 1`) with optional instant bot account purge & repopulation.
-- Streamlined **AH Bot Setup** in `skirmish/menu.py` with real-time status banners, automatic MySQL character GUID detection, step-by-step creation guides (suggesting character name `Auctioneer`), and warnings against entering the game world on bot characters.
+- Streamlined **AH Bot Setup** in `skirmish/menu.py` with an **Interactive Setup Wizard**, real-time status banners, automatic MySQL character GUID detection, step-by-step creation guides (suggesting character name `Auctioneer`), and warnings against entering the game world on bot characters.
 - Updated `docs/MODULES.md` with streamlined `mod-ah-bot` configuration & character setup steps.
-- Expanded Pytest suite (`tests/test_menu_py.py`) to cover Account Creation Wizard, Bot Starting Level Mode, AH Bot Setup, and Wipe Server confirmation safeguards.
+- Expanded Pytest suite (`tests/test_menu_py.py`) to cover Account Creation Wizard, SRP6 verifier generation, Bot Starting Level Mode, AH Bot Setup, and Wipe Server confirmation safeguards.
 
 
 ## [1.0.3] - 2026-08-26

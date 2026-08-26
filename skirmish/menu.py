@@ -9,6 +9,7 @@ import re
 import sys
 import time
 import shutil
+import hashlib
 import subprocess
 from typing import List, Optional, Callable
 
@@ -38,6 +39,32 @@ def sanitize_sql(val: str) -> str:
     if not val:
         return ""
     return val.replace("\\", "\\\\").replace("'", "''")
+
+
+def generate_srp6_verifier(username: str, password: str) -> tuple:
+    """
+    Generates salt (32 bytes hex) and verifier (32 bytes hex) for AzerothCore 3.3.5a (WotLK) SRP6 authentication.
+    Matches SRP6::MakeRegistrationData in src/common/Cryptography/Authentication/SRP6.cpp.
+    """
+    user_upper = username.upper()
+    pass_upper = password.upper()
+
+    creds = f"{user_upper}:{pass_upper}".encode("utf-8")
+    h1 = hashlib.sha1(creds).digest()
+
+    salt = os.urandom(32)
+    h2 = hashlib.sha1(salt + h1).digest()
+    h2_int = int.from_bytes(h2, "little")
+
+    g = 7
+    n_hex = "894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7"
+    n_bytes = bytes.fromhex(n_hex)[::-1]
+    N_int = int.from_bytes(n_bytes, "little")
+
+    verifier_int = pow(g, h2_int, N_int)
+    verifier = verifier_int.to_bytes(32, "little")
+
+    return salt.hex(), verifier.hex()
 
 
 # ==============================================================================
@@ -736,6 +763,18 @@ def create_account_action(context: dict):
 
     if db_online:
         try:
+            salt_hex, verifier_hex = generate_srp6_verifier(user, password)
+            sql_insert = (
+                f"INSERT INTO acore_auth.account (username, salt, verifier) "
+                f"VALUES (UPPER('{safe_user}'), UNHEX('{salt_hex}'), UNHEX('{verifier_hex}')) "
+                f"ON DUPLICATE KEY UPDATE salt=UNHEX('{salt_hex}'), verifier=UNHEX('{verifier_hex}');"
+            )
+            subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", sql_insert],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            account_created = True
+
             res = subprocess.run(
                 ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
                  f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{safe_user}');"],
@@ -747,23 +786,6 @@ def create_account_action(context: dict):
                 if len(lines) > 1 and lines[-1].isdigit():
                     acc_id = lines[-1]
 
-            if not account_created and not acc_id:
-                subprocess.run(
-                    ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                     f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{safe_user}'), UNHEX(''), UNHEX(''));"],
-                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-                )
-                account_created = True
-                res = subprocess.run(
-                    ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                     f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{safe_user}');"],
-                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
-                )
-                if res.returncode == 0 and res.stdout:
-                    lines = [l.strip() for l in res.stdout.strip().splitlines() if l.strip()]
-                    if len(lines) > 1 and lines[-1].isdigit():
-                        acc_id = lines[-1]
-
             if acc_id and gm_level > 0:
                 subprocess.run(
                     ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
@@ -773,6 +795,7 @@ def create_account_action(context: dict):
                 gm_applied = True
         except Exception as e:
             print(f"Warning: Database update error: {e}")
+
 
     print("\n=====================================================")
     if account_created or gm_applied:
@@ -1220,11 +1243,16 @@ def ahbot_interactive_wizard(context: dict):
         except Exception:
             pass
 
-    if not account_created and db_online:
+    if db_online:
         try:
-            res = subprocess.run(
-                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                 f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{safe_user}'), UNHEX(''), UNHEX(''));"],
+            salt_hex, verifier_hex = generate_srp6_verifier(user, password)
+            sql_insert = (
+                f"INSERT INTO acore_auth.account (username, salt, verifier) "
+                f"VALUES (UPPER('{safe_user}'), UNHEX('{salt_hex}'), UNHEX('{verifier_hex}')) "
+                f"ON DUPLICATE KEY UPDATE salt=UNHEX('{salt_hex}'), verifier=UNHEX('{verifier_hex}');"
+            )
+            subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", sql_insert],
                 cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
             account_created = True
@@ -1235,6 +1263,7 @@ def ahbot_interactive_wizard(context: dict):
         print(f"  [OK] Account '{user}' configured!")
     else:
         print(f"  [NOTE] Account '{user}' will be initialized when server finishes starting.")
+
 
     # Step 2: Character Creation Guide
     print("\n=====================================================")

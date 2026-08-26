@@ -451,5 +451,16 @@ def test_ahbot_setup_menu():
     assert "No characters found in database" in stdout
 
 
+def test_generate_srp6_verifier():
+    """Verify generate_srp6_verifier produces valid 32-byte hex salt and verifier."""
+    import skirmish.menu as menu_mod
+    salt_hex, verifier_hex = menu_mod.generate_srp6_verifier("ahbot", "password")
+    assert len(salt_hex) == 64
+    assert len(verifier_hex) == 64
+    assert all(c in "0123456789abcdefABCDEF" for c in salt_hex)
+    assert all(c in "0123456789abcdefABCDEF" for c in verifier_hex)
+
+
+
 
 
