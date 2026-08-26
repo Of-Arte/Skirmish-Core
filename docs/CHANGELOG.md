@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.6] - 2026-08-26
+
+### Skirmish Mode & Individual Progression Alignment
+- Synchronized Individual Progression (`env/dist/etc/modules/individualProgression.conf`) settings with Skirmish Mode PvP brackets, Expansion presets, and Custom level ranges in `skirmish/menu.py`.
+- Dynamic alignment configures maps, starting progression stage, progression limit, and bot level caps according to chosen level range:
+  - **Classic (<= 60)**: Maps `0,1`, `StartingProgression = 0` (Vanilla phase), `ProgressionLimit = 7` (Level 60 cap).
+  - **TBC (61-70)**: Maps `0,1,530`, `StartingProgression = 8` (Dark Portal & Outland unlocked), `ProgressionLimit = 13` (Level 70 cap).
+  - **WotLK / Custom Wide Ranges (71-80, e.g. 70-80, 1-80, 20-79)**: Maps `0,1,530,571`, `StartingProgression = 13` (Northrend & WotLK unlocked), `ProgressionLimit = 0` (WotLK level 80 cap).
+- Updated `DockerService.reload_worldserver_config()` in `skirmish/menu.py` to touch both `playerbots.conf` and `individualProgression.conf` for live hot-reloading in the worldserver.
+- Added explicit user notifications and optional instant bot purge prompts to Bot Starting Level Mode (`Option 4 -> 3`), Expansion Setup (`Option 3`), Bot Population Density (`Option 4 -> 1`), and Skirmish Brackets (`Option 2`), ensuring users are informed when database bot records require a purge to take full effect.
+- Expanded test suite in `tests/test_menu_py.py` with `individualProgression.conf` isolation and assertions across expansion and skirmish bracket presets.
+
+
 ## [1.0.5] - 2026-08-26
 
 ### Control Hub & Build Validation

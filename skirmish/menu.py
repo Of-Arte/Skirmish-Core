@@ -73,10 +73,16 @@ def generate_srp6_verifier(username: str, password: str) -> tuple:
 class MenuOption:
     """Base class for any menu option."""
 
-    def __init__(self, key: str, label: str, description: str = ""):
+    def __init__(self, key: str, label: str, description: str = "", requires_server: Optional[str] = None):
+        """
+        :param requires_server: If "online", label is annotated with [SERVER OFFLINE] when server is down.
+                                If "offline", label is annotated with [SERVER ONLINE] when server is up.
+                                If None, no annotation is added.
+        """
         self.key = key
         self.label = label
         self.description = description
+        self.requires_server = requires_server  # "online" | "offline" | None
 
     def execute(self, context: dict) -> bool:
         """
@@ -89,8 +95,9 @@ class MenuOption:
 class ActionOption(MenuOption):
     """Menu option that executes a callable action function."""
 
-    def __init__(self, key: str, label: str, description: str, action_fn: Callable[[dict], None], pause_after: bool = True):
-        super().__init__(key, label, description)
+    def __init__(self, key: str, label: str, description: str, action_fn: Callable[[dict], None],
+                 pause_after: bool = True, requires_server: Optional[str] = None):
+        super().__init__(key, label, description, requires_server=requires_server)
         self.action_fn = action_fn
         self.pause_after = pause_after
 
@@ -104,8 +111,9 @@ class ActionOption(MenuOption):
 class SubMenuOption(MenuOption):
     """Menu option that opens a child menu, inheriting SubMenu behavior."""
 
-    def __init__(self, key: str, label: str, description: str, sub_menu: 'BaseMenu'):
-        super().__init__(key, label, description)
+    def __init__(self, key: str, label: str, description: str, sub_menu: 'BaseMenu',
+                 requires_server: Optional[str] = None):
+        super().__init__(key, label, description, requires_server=requires_server)
         self.sub_menu = sub_menu
 
     def execute(self, context: dict) -> bool:
@@ -140,8 +148,18 @@ class BaseMenu:
             print("-----------------------------------------------------")
         print()
 
+        # Cache server status once per render to avoid repeated subprocess calls.
+        server_online = DockerService.get_container_status("ac-worldserver") == "ONLINE"
+
         for opt in self.options:
-            print(f"  {opt.key}. {opt.label}")
+            display_label = opt.label
+            annotation = ""
+            if opt.requires_server == "online" and not server_online:
+                annotation = " [SERVER OFFLINE]"
+            elif opt.requires_server == "offline" and server_online:
+                annotation = " [SERVER ONLINE]"
+
+            print(f"  {opt.key}. {display_label}{annotation}")
             if opt.description:
                 print(f"     {opt.description}")
             print()
@@ -601,7 +619,7 @@ class DockerService:
             print("\nReloading worldserver config...")
             try:
                 subprocess.run(
-                    ["docker", "compose", "exec", "-T", "ac-worldserver", "bash", "-c", "touch /azerothcore/env/dist/etc/modules/playerbots.conf"],
+                    ["docker", "compose", "exec", "-T", "ac-worldserver", "bash", "-c", "touch /azerothcore/env/dist/etc/modules/playerbots.conf /azerothcore/env/dist/etc/modules/individualProgression.conf"],
                     cwd=CORE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
                 subprocess.run(
@@ -1044,28 +1062,58 @@ def bot_population_preset_action(preset_name: str, min_bots: int, max_bots: int)
         "AiPlayerbot.MinRandomBots": str(min_bots),
         "AiPlayerbot.MaxRandomBots": str(max_bots)
     }):
-        DockerService.reload_worldserver_config()
         print("\n=====================================================")
         print(f" SUCCESS: Bot population set to {preset_name} [{min_bots}-{max_bots}]")
         print("=====================================================")
+        print(" Newly spawned bot density limits adjusted.")
+        print(" Existing bot accounts retain database records unless a purge is executed.")
+        do_purge = safe_input("\nWould you like to PURGE existing playerbots now to immediately reflect the new population limit? [Y/N]: ").strip().lower()
+        if do_purge == 'y':
+            purge_bots_sequence({})
+        else:
+            DockerService.reload_worldserver_config()
 
 
 def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
     print(f"\nConfiguring {mode_name} [Max Level {max_level}, Maps {maps_str}]...")
-    if ConfigManager.update_conf_values({
+
+    ip_start = "0"
+    ip_limit = "7"
+    if max_level > 70:
+        ip_start = "13"
+        ip_limit = "0"
+    elif max_level > 60:
+        ip_start = "8"
+        ip_limit = "13"
+
+    pb_success = ConfigManager.update_conf_values({
         "AiPlayerbot.RandomBotMaxLevel": str(max_level),
         "AiPlayerbot.RandomBotMaps": maps_str
-    }):
-        DockerService.reload_worldserver_config()
+    })
+
+    ip_success = ConfigManager.update_conf_values({
+        "IndividualProgression.StartingProgression": ip_start,
+        "IndividualProgression.ProgressionLimit": ip_limit,
+        "IndividualProgression.BotAccountsMaxLevel": str(max_level)
+    }, conf_path=IP_CONF_FILE)
+
+    if pb_success and ip_success:
         print("\n=====================================================")
         print(" SUCCESS: Expansion progression updated!")
         print("=====================================================")
-        print(" REMINDER for Individual Progression [.ip]:")
-        print(" - GM Commands to bypass progression gates:")
-        print("     .ip help                  [View all commands]")
-        print("     .ip set level <lvl>      [Set player progression level]")
-        print("     .ip complete             [Complete current tier]")
+        print(f" Expansion Mode      : {mode_name}")
+        print(f" Bot Level Cap       : {max_level}")
+        print(f" Unlocked Maps       : {maps_str}")
+        print(f" IP Starting Stage   : {ip_start}")
+        print(f" IP Progression Limit: {ip_limit if ip_limit != '0' else '0 (Unlimited WotLK)'}")
         print("=====================================================")
+        print(" [NOTE] Existing bot characters in database retain current levels/gear")
+        print("        unless a purge is executed to repopulate for this expansion.")
+        do_purge = safe_input(f"\nWould you like to PURGE existing playerbots now to immediately repopulate for {mode_name}? [Y/N]: ").strip().lower()
+        if do_purge == 'y':
+            purge_bots_sequence({})
+        else:
+            DockerService.reload_worldserver_config()
 
 
 def skirmish_preset_action(min_lvl: int, max_lvl: int):
@@ -1074,12 +1122,19 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
         return
 
     exp_maps = "0,1"
+    ip_start = "0"
+    ip_limit = "7"
+
     if max_lvl > 70:
         print("\nMax level is above 70 - Enabling WotLK Maps & Content [Maps: 0,1,530,571]...")
         exp_maps = "0,1,530,571"
+        ip_start = "13"
+        ip_limit = "0"
     elif max_lvl > 60:
         print("\nMax level is above 60 - Enabling TBC Maps & Content [Maps: 0,1,530]...")
         exp_maps = "0,1,530"
+        ip_start = "8"
+        ip_limit = "13"
 
     print(f"\nApplying Skirmish Config: Level Range [{min_lvl} - {max_lvl}]...")
     ConfigManager.update_conf_values({
@@ -1089,9 +1144,17 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
         "AiPlayerbot.SyncLevelWithPlayers": "0"
     })
 
+    ConfigManager.update_conf_values({
+        "IndividualProgression.StartingProgression": ip_start,
+        "IndividualProgression.ProgressionLimit": ip_limit,
+        "IndividualProgression.BotAccountsMaxLevel": str(max_lvl)
+    }, conf_path=IP_CONF_FILE)
+
     print(f"\nSkirmish configuration saved!")
-    print(f"Level Range : {min_lvl} - {max_lvl}")
-    print(f"LevelSync   : Disabled [Bots stay at {min_lvl}-{max_lvl} even for Level 1 players]\n")
+    print(f"Level Range       : {min_lvl} - {max_lvl}")
+    print(f"LevelSync         : Disabled [Bots stay at {min_lvl}-{max_lvl} even for Level 1 players]")
+    print(f"IP Starting Stage : {ip_start}")
+    print(f"IP Progression Lim: {ip_limit if ip_limit != '0' else '0 (Unlimited WotLK)'}\n")
 
     do_purge = safe_input(f"Would you like to PURGE existing playerbots now to immediately repopulate at level {min_lvl}-{max_lvl}? [Y/N]: ").strip().lower()
     if do_purge == 'y':
@@ -1435,6 +1498,9 @@ def bot_starting_level_action(context: dict):
     print("\n  2. Random Level Spawns [Default] (DisableRandomLevels = 0)")
     print("     -> Bots generate at random levels across the level range")
     print("        and auto-teleport to level-appropriate zones.")
+    print("\n  [NOTE] Changing spawn behavior applies to newly generated bots.")
+    print("         Existing bots saved in the database retain their current levels")
+    print("         unless a purge is executed.")
     print("\n  0. Back")
 
     choice = safe_input("\nSelect an option [0-2]: ").strip()
@@ -1447,6 +1513,7 @@ def bot_starting_level_action(context: dict):
             print(" SUCCESS: Forced Level 1 Bot Spawns Enabled!")
             print("=====================================================")
             print(" Newly created randombots will now spawn at Level 1.")
+            print(" Existing bots retain their current levels unless purged.")
             do_purge = safe_input("\nWould you like to PURGE existing playerbots now to immediately spawn fresh Level 1 bots? [Y/N]: ").strip().lower()
             if do_purge == 'y':
                 purge_bots_sequence(context)
@@ -1456,10 +1523,16 @@ def bot_starting_level_action(context: dict):
         if ConfigManager.update_conf_values({
             "AiPlayerbot.DisableRandomLevels": "0"
         }):
-            DockerService.reload_worldserver_config()
             print("\n=====================================================")
             print(" SUCCESS: Random Level Bot Spawns Enabled!")
             print("=====================================================")
+            print(" Newly created randombots will now spawn at random levels.")
+            print(" Existing bots retain their current levels unless purged.")
+            do_purge = safe_input("\nWould you like to PURGE existing playerbots now to immediately repopulate with random level bots? [Y/N]: ").strip().lower()
+            if do_purge == 'y':
+                purge_bots_sequence(context)
+            else:
+                DockerService.reload_worldserver_config()
 
 
 # ==============================================================================
@@ -1471,11 +1544,14 @@ def create_application_menus() -> BaseMenu:
 
     # 1. Server Controls SubMenu
     server_menu = BaseMenu("SERVER CONTROLS & ADMIN", parent=main_menu)
-    server_menu.add_option(ActionOption("1", "Start Server", "Turn it on", start_server_action))
-    server_menu.add_option(ActionOption("2", "Stop Server", "Turn it off", stop_server_action))
+    server_menu.add_option(ActionOption("1", "Start Server", "Turn it on", start_server_action,
+                                        requires_server="offline"))
+    server_menu.add_option(ActionOption("2", "Stop Server", "Turn it off", stop_server_action,
+                                        requires_server="online"))
     server_menu.add_option(ActionOption("3", "Build Server", "Rebuild Docker container images", build_action))
     server_menu.add_option(ActionOption("4", "Create Game Account Wizard", "Automated account creation with GM status selection", create_account_action))
-    server_menu.add_option(ActionOption("5", "Admin Console", "Open interactive worldserver terminal console", admin_console_action, pause_after=False))
+    server_menu.add_option(ActionOption("5", "Admin Console", "Open interactive worldserver terminal console", admin_console_action,
+                                        pause_after=False, requires_server="online"))
     server_menu.add_option(ActionOption("6", "Live Logs", "See what the server is doing", logs_action, pause_after=False))
     server_menu.add_option(ActionOption("7", "Health Check", "Make sure everything is running", doctor_action))
     server_menu.add_option(ActionOption("8", "Wipe Server Setup", "Delete all containers, database volumes, & images (requires rebuild)", wipe_server_action))
@@ -1521,7 +1597,8 @@ def create_application_menus() -> BaseMenu:
     bot_menu.add_option(SubMenuOption("1", "Adjust Bot Population Density", "Set bot counts based on performance impact", pop_menu))
     bot_menu.add_option(SubMenuOption("2", "Open World RPG Activity Presets", "Tune bot open world behaviors (Questing, Grinding, PvP, Idling)", rpg_menu))
     bot_menu.add_option(ActionOption("3", "Bot Starting Level Mode", "Set bot spawn behavior (Force Level 1 vs Random levels)", bot_starting_level_action))
-    bot_menu.add_option(ActionOption("4", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action))
+    bot_menu.add_option(ActionOption("4", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action,
+                                     requires_server="online"))
     bot_menu.add_option(ActionOption("5", "Auction House Bot Setup", "Optionally enable or configure AH Bot character/GUID", ahbot_setup_action))
     main_menu.add_option(SubMenuOption("4", "Bot Management & Population", "Reset bots, adjust population, or set open world RPG activity", bot_menu))
 
