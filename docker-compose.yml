@@ -26,7 +26,7 @@ services:
 
   ac-db-import:
     container_name: ac-db-import
-    image: acore/ac-wotlk-db-import:${DOCKER_IMAGE_TAG:-master}
+    image: acore/ac-wotlk-db-import:${DOCKER_IMAGE_TAG:-skirmish}
     networks:
       - ac-network
     build:
@@ -53,7 +53,7 @@ services:
 
   ac-worldserver:
     container_name: ac-worldserver
-    image: acore/ac-wotlk-worldserver:${DOCKER_IMAGE_TAG:-master}
+    image: acore/ac-wotlk-worldserver:${DOCKER_IMAGE_TAG:-skirmish}
     build:
       context: .
       target: worldserver
@@ -95,7 +95,7 @@ services:
 
   ac-authserver:
     container_name: ac-authserver
-    image: acore/ac-wotlk-authserver:${DOCKER_IMAGE_TAG:-master}
+    image: acore/ac-wotlk-authserver:${DOCKER_IMAGE_TAG:-skirmish}
     build:
       context: .
       target: authserver
@@ -128,7 +128,7 @@ services:
 
   ac-client-data-init:
     container_name: ac-client-data-init
-    image: acore/ac-wotlk-client-data:${DOCKER_IMAGE_TAG:-master}
+    image: acore/ac-wotlk-client-data:${DOCKER_IMAGE_TAG:-skirmish}
     build:
       context: .
       target: client-data
@@ -144,7 +144,7 @@ services:
   # Most of the time this shouldn't be needed
   ac-tools:
     container_name: ac-tools
-    image: acore/ac-wotlk-tools:${DOCKER_IMAGE_TAG:-master}
+    image: acore/ac-wotlk-tools:${DOCKER_IMAGE_TAG:-skirmish}
     build:
       context: .
       target: tools
@@ -170,7 +170,7 @@ services:
   # first-class support
   ac-dev-server:
     tty: true
-    image: acore/ac-wotlk-dev-server:${DOCKER_IMAGE_TAG:-master}
+    image: acore/ac-wotlk-dev-server:${DOCKER_IMAGE_TAG:-skirmish}
     build:
       context: .
       dockerfile: ./apps/docker/Dockerfile.dev-server
