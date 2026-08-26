@@ -14,6 +14,13 @@ All notable changes to this project will be documented in this file.
 - Added explicit user notifications and optional instant bot purge prompts to Bot Starting Level Mode (`Option 4 -> 3`), Expansion Setup (`Option 3`), Bot Population Density (`Option 4 -> 1`), and Skirmish Brackets (`Option 2`), ensuring users are informed when database bot records require a purge to take full effect.
 - Expanded test suite in `tests/test_menu_py.py` with `individualProgression.conf` isolation and assertions across expansion and skirmish bracket presets.
 
+### Module Defaults & Config Fixes
+- Fixed hardcoded dev character GUID (`55`) and dev-session settings (`EnableSeller = true`, `Buyer.Enabled = true`) in `env/dist/etc/modules/mod_ahbot.conf`, restoring clean release defaults (`GUIDs = 0`, `EnableSeller = false`, `Buyer.Enabled = false`).
+- Corrected duplicate example comment lines in `mod_ahbot.conf`.
+- Fixed leftover dev skirmish level cap (`BotAccountsMaxLevel = 45`) in `env/dist/etc/modules/individualProgression.conf`, restoring Classic 1-60 defaults (`BotAccountsMaxLevel = 60`, `ProgressionLimit = 7`).
+- Updated `expansion_preset_action` in `skirmish/menu.py` to set `AiPlayerbot.RandomBotMinLevel = 1` and synchronize `IndividualProgression.BotAccountsMaxLevel` alongside map unlocks and progression limits when switching expansion modes.
+- Extended test suite in `tests/test_menu_py.py` to assert `AiPlayerbot.RandomBotMinLevel = 1` across all expansion preset tests.
+
 
 ## [1.0.5] - 2026-08-26
 

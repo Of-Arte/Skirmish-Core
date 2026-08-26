@@ -317,6 +317,7 @@ def test_expansion_mode_config_mutation():
     assert "Configuring Classic Mode" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
+        assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 60" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
@@ -331,6 +332,7 @@ def test_expansion_mode_config_mutation():
     assert "Configuring TBC Mode" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
+        assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 70" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1,530" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
@@ -345,6 +347,7 @@ def test_expansion_mode_config_mutation():
     assert "Configuring WotLK Mode" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
+        assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 80" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1,530,571" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:

@@ -1087,6 +1087,7 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
         ip_limit = "13"
 
     pb_success = ConfigManager.update_conf_values({
+        "AiPlayerbot.RandomBotMinLevel": "1",
         "AiPlayerbot.RandomBotMaxLevel": str(max_level),
         "AiPlayerbot.RandomBotMaps": maps_str
     })
@@ -1102,10 +1103,11 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
         print(" SUCCESS: Expansion progression updated!")
         print("=====================================================")
         print(f" Expansion Mode      : {mode_name}")
-        print(f" Bot Level Cap       : {max_level}")
+        print(f" Bot Level Range     : Level 1 - {max_level}")
         print(f" Unlocked Maps       : {maps_str}")
         print(f" IP Starting Stage   : {ip_start}")
         print(f" IP Progression Limit: {ip_limit if ip_limit != '0' else '0 (Unlimited WotLK)'}")
+        print(f" IP Bot Account Cap  : Level {max_level}")
         print("=====================================================")
         print(" [NOTE] Existing bot characters in database retain current levels/gear")
         print("        unless a purge is executed to repopulate for this expansion.")
