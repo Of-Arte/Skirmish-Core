@@ -329,6 +329,9 @@ def test_expansion_mode_config_mutation():
         assert "AiPlayerbot.RandomBotMaxLevel = 60" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1" in content
         assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
+        assert "AiPlayerbot.DisableRandomLevels = 0" in content
+        assert "AiPlayerbot.LevelBrackets.Enabled = 0" in content
+        assert "AiPlayerbot.ResetBotLevel.MaxLevel = 60" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 0" in ip_content
@@ -345,6 +348,9 @@ def test_expansion_mode_config_mutation():
         assert "AiPlayerbot.RandomBotMaxLevel = 70" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1,530" in content
         assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
+        assert "AiPlayerbot.DisableRandomLevels = 0" in content
+        assert "AiPlayerbot.LevelBrackets.Enabled = 0" in content
+        assert "AiPlayerbot.ResetBotLevel.MaxLevel = 70" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 8" in ip_content
@@ -361,6 +367,9 @@ def test_expansion_mode_config_mutation():
         assert "AiPlayerbot.RandomBotMaxLevel = 80" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1,530,571" in content
         assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
+        assert "AiPlayerbot.DisableRandomLevels = 0" in content
+        assert "AiPlayerbot.LevelBrackets.Enabled = 1" in content
+        assert "AiPlayerbot.ResetBotLevel.MaxLevel = 80" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 13" in ip_content
@@ -378,6 +387,8 @@ def test_skirmish_bracket_config_mutation():
         assert "AiPlayerbot.RandomBotMinLevel = 10" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 20" in content
         assert "AiPlayerbot.RandomBotFixedLevel = 1" in content
+        assert "AiPlayerbot.LevelBrackets.Enabled = 0" in content
+        assert "AiPlayerbot.ResetBotLevel.MaxLevel = 20" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 0" in ip_content
@@ -396,6 +407,8 @@ def test_custom_skirmish_action_executes_preset():
         assert "AiPlayerbot.RandomBotMinLevel = 35" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 45" in content
         assert "AiPlayerbot.RandomBotFixedLevel = 1" in content
+        assert "AiPlayerbot.LevelBrackets.Enabled = 0" in content
+        assert "AiPlayerbot.ResetBotLevel.MaxLevel = 45" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 0" in ip_content
@@ -413,6 +426,8 @@ def test_custom_skirmish_action_level_1_sets_fixed_level_zero():
         assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 60" in content
         assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
+        assert "AiPlayerbot.LevelBrackets.Enabled = 0" in content
+        assert "AiPlayerbot.ResetBotLevel.MaxLevel = 60" in content
 
 
 def test_skirmish_custom_range_validation():

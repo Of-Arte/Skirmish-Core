@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.9] - 2026-08-26
+
+### Expansion Setup & Configuration Integration
+- Fixed a conflict with the **Level Brackets Subsystem**: When selecting Classic Mode (Level 60) or TBC Mode (Level 70), the distributor scheduler is now dynamically disabled (`AiPlayerbot.LevelBrackets.Enabled = 0`) to prevent it from redistributing bots into level ranges 61–80. Choosing WotLK Mode (Level 80) re-enables it (`1`).
+- Resolved the **Level Reset Subsystem Misalignment**: Preset actions now dynamically configure `AiPlayerbot.ResetBotLevel.MaxLevel` to match the exact max level cap of the selected mode, ensuring reset triggers fire properly for capped bots.
+- Fixed **Stale Bot Level Persistence (Without Purge)**: Implemented `delete_bots_outside_range(min_lvl, max_lvl)` to cleanly delete over-leveled and out-of-range bots and their orphaned database records when a user declines the full bot purge prompt on expansion preset swaps or skirmish setups.
+- Resolved **Forced Level 1 Spawns Persistence**: Switching to expansion presets now resets `AiPlayerbot.DisableRandomLevels` to `0` to prevent bots from remaining stuck at Level 1 in starting zones.
+- Updated the unit tests in `tests/test_menu_py.py` to assert correct setting changes across the new presets.
+
+
 ## [1.0.8] - 2026-08-26
 
 ### Skirmish PvP Bracket & Fixed Level Alignment

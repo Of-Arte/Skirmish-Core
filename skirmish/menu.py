@@ -1074,6 +1074,61 @@ def bot_population_preset_action(preset_name: str, min_bots: int, max_bots: int)
             DockerService.reload_worldserver_config()
 
 
+def delete_bots_outside_range(min_lvl: int, max_lvl: int):
+    """Deletes all random bot characters that fall outside the [min_lvl, max_lvl] range, and cleans up their data."""
+    if DockerService.get_container_status("ac-database") != "ONLINE":
+        return
+
+    prefix = ConfigManager.get_conf_value("AiPlayerbot.RandomBotAccountPrefix", "rndbot")
+    safe_prefix = sanitize_sql(prefix)
+
+    print(f"\n[!] Cleaning up existing bot characters outside level range {min_lvl}-{max_lvl} to maintain immersion...")
+
+    queries = [
+        f"DELETE FROM acore_characters.characters WHERE account IN (SELECT id FROM acore_auth.account WHERE username LIKE '{safe_prefix}%') AND (level < {min_lvl} OR level > {max_lvl});",
+        "DELETE FROM acore_characters.arena_team_member WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.arena_team WHERE arenaTeamId NOT IN (SELECT arenaTeamId FROM acore_characters.arena_team_member);",
+        "DELETE FROM acore_characters.character_account_data WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_achievement WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_achievement_progress WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_action WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_arena_stats WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_aura WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_entry_point WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_glyphs WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_homebind WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_inventory WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.item_instance WHERE owner_guid NOT IN (SELECT guid FROM acore_characters.characters) AND owner_guid > 0;",
+        "DELETE FROM acore_characters.character_pet WHERE owner NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.pet_aura WHERE guid NOT IN (SELECT id FROM acore_characters.character_pet);",
+        "DELETE FROM acore_characters.pet_spell WHERE guid NOT IN (SELECT id FROM acore_characters.character_pet);",
+        "DELETE FROM acore_characters.pet_spell_cooldown WHERE guid NOT IN (SELECT id FROM acore_characters.character_pet);",
+        "DELETE FROM acore_characters.character_queststatus WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_queststatus_rewarded WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_reputation WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_skills WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_social WHERE friend NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_spell WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_spell_cooldown WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_talent WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.corpse WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.groups WHERE leaderGuid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.group_member WHERE memberGuid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.mail WHERE receiver NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.mail_items WHERE receiver NOT IN (SELECT guid FROM acore_characters.characters);"
+    ]
+
+    try:
+        for query in queries:
+            subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", query],
+                cwd=CORE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+        print("Done cleaning up out-of-range bots.")
+    except Exception as e:
+        print(f"Warning: Failed to clean up out-of-range bots: {e}")
+
+
 def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
     print(f"\nConfiguring {mode_name} [Max Level {max_level}, Maps {maps_str}]...")
 
@@ -1086,11 +1141,16 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
         ip_start = "8"
         ip_limit = "13"
 
+    level_brackets_enabled = "1" if max_level == 80 else "0"
+
     pb_success = ConfigManager.update_conf_values({
         "AiPlayerbot.RandomBotMinLevel": "1",
         "AiPlayerbot.RandomBotMaxLevel": str(max_level),
         "AiPlayerbot.RandomBotMaps": maps_str,
-        "AiPlayerbot.RandomBotFixedLevel": "0"
+        "AiPlayerbot.RandomBotFixedLevel": "0",
+        "AiPlayerbot.DisableRandomLevels": "0",
+        "AiPlayerbot.LevelBrackets.Enabled": level_brackets_enabled,
+        "AiPlayerbot.ResetBotLevel.MaxLevel": str(max_level)
     })
 
     ip_success = ConfigManager.update_conf_values({
@@ -1116,6 +1176,7 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
         if do_purge == 'y':
             purge_bots_sequence({})
         else:
+            delete_bots_outside_range(1, max_level)
             DockerService.reload_worldserver_config()
 
 
@@ -1149,7 +1210,9 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
         "AiPlayerbot.RandomBotMaxLevel": str(max_lvl),
         "AiPlayerbot.RandomBotMaps": exp_maps,
         "AiPlayerbot.SyncLevelWithPlayers": "0",
-        "AiPlayerbot.RandomBotFixedLevel": fixed_level
+        "AiPlayerbot.RandomBotFixedLevel": fixed_level,
+        "AiPlayerbot.LevelBrackets.Enabled": "0",
+        "AiPlayerbot.ResetBotLevel.MaxLevel": str(max_lvl)
     })
 
     ConfigManager.update_conf_values({
@@ -1170,6 +1233,7 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
     if do_purge == 'y':
         purge_bots_sequence({})
     else:
+        delete_bots_outside_range(min_lvl, max_lvl)
         DockerService.reload_worldserver_config()
 
     print("\n=====================================================")
