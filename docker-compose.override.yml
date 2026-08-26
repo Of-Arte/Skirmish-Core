@@ -2,6 +2,7 @@ services:
   ac-db-import:
     volumes:
       - ./modules:/azerothcore/modules:ro
+      - ./data:/azerothcore/data:ro
   ac-authserver:
     ports:
       - "3724:3724"
@@ -11,4 +12,3 @@ services:
       - "7878:7878"
     volumes:
       - ./modules:/azerothcore/modules:ro
-
