@@ -113,6 +113,6 @@ AiPlayerbot.RandombotStartingLevel = 1
 
 ##### Automated Clean Slate (Wipe & Regenerate All Bots)
 1. Run `python menu.py` -> **Option 4 (Bot Management & Population)**.
-2. Select **Option 2 (Reset & Purge Playerbots)**.
+2. Select **Option 4 (Reset & Purge Playerbots)**.
 3. The menu system will automatically handle setting `DeleteRandomBotAccounts = 1`, restarting the server, performing cleanup, and returning `DeleteRandomBotAccounts = 0`.
 

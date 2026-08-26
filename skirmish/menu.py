@@ -311,6 +311,12 @@ class HealthChecker:
         else:
             print("  [OK] Docker Daemon : Active & responsive")
 
+        if not DockerService.are_images_built():
+            print("  [FAIL] Docker Images : Missing built server images (run Option 1 -> 3 'Build Server' first)")
+            issues_found += 1
+        else:
+            print("  [OK] Docker Images : Built & present")
+
         # 4. Container Status Inspection
         print("\n[4/6] Docker Container Stack Status")
         print("  Inspecting container states...", flush=True)
@@ -454,8 +460,42 @@ class DockerService:
         return "OFFLINE"
 
     @staticmethod
+    def are_images_built() -> bool:
+        """Returns True if the required Docker images have been built locally."""
+        if "PYTEST_CURRENT_TEST" in os.environ or os.environ.get("SKIRMISHCORE_TEST_MODE") == "1":
+            return True
+        tag = os.environ.get("DOCKER_IMAGE_TAG", "skirmish")
+        required_images = [
+            f"acore/ac-wotlk-worldserver:{tag}",
+            f"acore/ac-wotlk-db-import:{tag}",
+            f"acore/ac-wotlk-authserver:{tag}",
+        ]
+        try:
+            for img in required_images:
+                res = subprocess.run(
+                    ["docker", "image", "inspect", img],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                if res.returncode != 0:
+                    return False
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
     def start_stack() -> bool:
-        """Launches docker compose up -d stack directly."""
+        """Launches docker compose up -d stack directly, building images first if needed."""
+        if not DockerService.are_images_built():
+            print("\n[!] WARNING: SkirmishCore Docker images have not been built yet.")
+            build_now = safe_input("Would you like to build the server images now? [Y/N]: ").strip().lower()
+            if build_now == 'y':
+                if not DockerService.build_images():
+                    return False
+            else:
+                print("\n[!] Start canceled: Docker images must be built before starting the server.")
+                return False
+
         print("\nChecking for pending database & module SQL updates...")
         try:
             subprocess.run(["docker", "compose", "up", "--force-recreate", "ac-db-import"], cwd=CORE_DIR)

@@ -166,6 +166,60 @@ def test_start_and_stop_server_actions_cancel():
     assert "Stop canceled." in stdout
 
 
+def test_start_server_action_rejects_flow_when_images_unbuilt(monkeypatch):
+    """Verify start server flow prompts to build images when Docker images have not been built."""
+    import skirmish.menu as menu_mod
+    monkeypatch.setattr(menu_mod.DockerService, "are_images_built", lambda: False)
+
+    # When user enters 'n' to build prompt
+    inputs = iter(["y", "n"])
+    monkeypatch.setattr(menu_mod, "safe_input", lambda prompt="": next(inputs, ""))
+
+    captured_out = []
+    monkeypatch.setattr("builtins.print", lambda *args, **kwargs: captured_out.append(" ".join(map(str, args))))
+
+    menu_mod.start_server_action({})
+    out_str = "\n".join(captured_out)
+    assert "WARNING: SkirmishCore Docker images have not been built yet." in out_str
+    assert "Start canceled: Docker images must be built before starting the server." in out_str
+
+    # When user enters 'y' to build prompt, verify DockerService.build_images is called
+    build_called = []
+    monkeypatch.setattr(menu_mod.DockerService, "build_images", lambda: build_called.append(True) or True)
+    inputs2 = iter(["y", "y"])
+    monkeypatch.setattr(menu_mod, "safe_input", lambda prompt="": next(inputs2, ""))
+
+    menu_mod.start_server_action({})
+    assert len(build_called) == 1
+
+
+def test_docker_service_are_images_built_check(monkeypatch):
+    """Verify DockerService.are_images_built checks image presence using docker image inspect."""
+    import skirmish.menu as menu_mod
+    monkeypatch.delenv("SKIRMISHCORE_TEST_MODE", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+    calls = []
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        class Dummy:
+            returncode = 0
+        return Dummy()
+
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run)
+    assert menu_mod.DockerService.are_images_built() is True
+    assert len(calls) == 3
+
+    # If inspect returns non-zero exit code
+    def fake_run_fail(cmd, **kwargs):
+        class DummyFail:
+            returncode = 1
+        return DummyFail()
+
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run_fail)
+    assert menu_mod.DockerService.are_images_built() is False
+
+
 def test_skirmish_menu_back():
     """Verify navigation into Skirmish menu and returning via 0."""
     stdout, stderr, code = run_menu_py_with_inputs(["2", "0", "0"])

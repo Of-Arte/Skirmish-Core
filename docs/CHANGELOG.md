@@ -2,15 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2026-08-26
+
+### Control Hub & Build Validation
+- Added `DockerService.are_images_built()` to `skirmish/menu.py` to inspect local Docker image presence (`acore/ac-wotlk-worldserver:skirmish`, `acore/ac-wotlk-db-import:skirmish`, `acore/ac-wotlk-authserver:skirmish`).
+- Centralized image build execution: `DockerService.start_stack()` now prompts to invoke `DockerService.build_images()` (which auto-heals git submodules and runs `docker compose build`) if images are unbuilt, guaranteeing consistent Docker Compose build execution regardless of which flow triggers server startup (Start Server, Account Wizard, Admin Console, LAN Setup, Bot Purge, AH Bot Setup).
+- Integrated Docker image presence verification into Health Check / System Doctor (Option 1 -> 7).
+- Added unit tests in `tests/test_menu_py.py` verifying image validation logic and seamless build prompt handling.
+
+
 ## [1.0.4] - 2026-08-26
 
 ### Control Hub & Server Management
 - Updated `skirmish/menu.py` Server Stop action to execute `docker compose down` directly without prematurely aborting on container status checks.
-- Added **Wipe Server Setup** option to `skirmish/menu.py` (Option 7 in Server Controls & Admin) to remove containers, database volumes (`-v`), networks, and built images (`--rmi all`), requiring explicit `"delete"` confirmation before execution.
-- Added **Automated Account Creation Wizard** to `skirmish/menu.py` (Option 3 in Server Controls & Admin) supporting custom username, password, and GM rank selection (Player, Moderator, GameMaster, Admin).
+- Added **Wipe Server Setup** option to `skirmish/menu.py` (Option 8 in Server Controls & Admin) to remove containers, database volumes (`-v`), networks, and built images (`--rmi all`), requiring explicit `"delete"` confirmation before execution.
+- Added **Automated Account Creation Wizard** to `skirmish/menu.py` (Option 4 in Server Controls & Admin) supporting custom username, password, and GM rank selection (Player, Moderator, GameMaster, Admin).
 - Implemented native Python **SRP6 Salt & Verifier Generator** (`generate_srp6_verifier`) matching AzerothCore WotLK authentication algorithms in `skirmish/menu.py`, enabling direct MySQL account provisioning that supports immediate WoW client login.
 - Configured `AiPlayerbot.AutoTeleportForLevel = 1` as default in `env/dist/etc/modules/playerbots.conf` so high-level bots automatically teleport to level-appropriate zones upon spawn/login.
-- Added **Bot Starting Level Mode** option to Option 4 (Bot Management & Population) in `skirmish/menu.py`, enabling users to toggle forced Level 1 starter spawns (`DisableRandomLevels = 1`) with optional instant bot account purge & repopulation.
+- Added **Bot Starting Level Mode** option (Option 3 in Bot Management & Population) in `skirmish/menu.py`, enabling users to toggle forced Level 1 starter spawns (`DisableRandomLevels = 1`) with optional instant bot account purge & repopulation.
 - Streamlined **AH Bot Setup** in `skirmish/menu.py` with an **Interactive Setup Wizard**, real-time status banners, automatic MySQL character GUID detection, step-by-step creation guides (suggesting character name `Auctioneer`), and warnings against entering the game world on bot characters.
 - Updated `docs/MODULES.md` with streamlined `mod-ah-bot` configuration & character setup steps.
 - Expanded Pytest suite (`tests/test_menu_py.py`) to cover Account Creation Wizard, SRP6 verifier generation, Bot Starting Level Mode, AH Bot Setup, and Wipe Server confirmation safeguards.
