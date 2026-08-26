@@ -9,5 +9,6 @@
 	url = https://github.com/ZhengPeiRu21/mod-individual-progression.git
 [submodule "modules/mod-acore-mall"]
 	path = modules/mod-acore-mall
-	url = https://github.com/Of-Arte/mod-acore-mall.git
+	url = https://github.com/Of-Arte/Acore_Mall.git
+
 

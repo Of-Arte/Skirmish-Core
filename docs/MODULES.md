@@ -9,7 +9,8 @@ The following inventory reflects the modules integrated as git submodules in the
 | `mod-playerbots` | Adds player-like bots simulating MMO experience | [mod-playerbots/mod-playerbots](https://github.com/mod-playerbots/mod-playerbots) | `modules/mod-playerbots` | `env/dist/etc/modules/playerbots.conf` |
 | `mod-ah-bot` | Blizzlike AH bot | [azerothcore/mod-ah-bot](https://github.com/azerothcore/mod-ah-bot) | `modules/mod-ah-bot` | `env/dist/etc/mod_ahbot.conf` & `env/dist/etc/modules/mod_ahbot.conf` |
 | `mod-individual-progression` | Simulates progress through expansions/tiers for individual players | [ZhengPeiRu21/mod-individual-progression](https://github.com/ZhengPeiRu21/mod-individual-progression) | `modules/mod-individual-progression` | `env/dist/etc/individualProgression.conf` & `env/dist/etc/modules/individualProgression.conf` |
-| `mod-acore-mall` | Vendor mall on GM Island | [Of-Arte/mod-acore-mall](https://github.com/Of-Arte/mod-acore-mall) | `modules/mod-acore-mall` | N/A |
+| `mod-acore-mall` | Vendor mall on GM Island | [Of-Arte/Acore_Mall](https://github.com/Of-Arte/Acore_Mall) | `modules/mod-acore-mall` | N/A |
+
 
 
 ---
