@@ -243,5 +243,24 @@ def test_linux_admin_console_and_logs_compatibility(monkeypatch):
     assert calls[0] == ["docker", "compose", "logs", "-f", "ac-worldserver"]
 
 
+def test_bot_starting_level_mode_config_mutation():
+    """Verify Bot Starting Level Mode toggles DisableRandomLevels in playerbots.conf."""
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "3", "1", "n", "", "0", "0"])
+    assert code == 0
+    assert "SUCCESS: Forced Level 1 Bot Spawns Enabled!" in stdout
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.DisableRandomLevels = 1" in content
+        assert "AiPlayerbot.RandombotStartingLevel = 1" in content
+
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "3", "2", "", "0", "0"])
+    assert code == 0
+    assert "SUCCESS: Random Level Bot Spawns Enabled!" in stdout
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.DisableRandomLevels = 0" in content
+
+
+
 
 

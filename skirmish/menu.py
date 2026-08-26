@@ -960,6 +960,44 @@ def ahbot_setup_action(context: dict):
                 print("=====================================================")
 
 
+def bot_starting_level_action(context: dict):
+    print("\n=====================================================")
+    print("      BOT STARTING LEVEL & SPAWN CONFIGURATION")
+    print("=====================================================")
+    print("Choose how new playerbots generate when spawned:")
+    print("\n  1. Force Level 1 Starter Spawns (DisableRandomLevels = 1)")
+    print("     -> All newly generated bots start at Level 1 in starting zones")
+    print("        and level up naturally alongside players.")
+    print("\n  2. Random Level Spawns [Default] (DisableRandomLevels = 0)")
+    print("     -> Bots generate at random levels across the level range")
+    print("        and auto-teleport to level-appropriate zones.")
+    print("\n  0. Back")
+
+    choice = safe_input("\nSelect an option [0-2]: ").strip()
+    if choice == "1":
+        if ConfigManager.update_conf_values({
+            "AiPlayerbot.DisableRandomLevels": "1",
+            "AiPlayerbot.RandombotStartingLevel": "1"
+        }):
+            print("\n=====================================================")
+            print(" SUCCESS: Forced Level 1 Bot Spawns Enabled!")
+            print("=====================================================")
+            print(" Newly created randombots will now spawn at Level 1.")
+            do_purge = safe_input("\nWould you like to PURGE existing playerbots now to immediately spawn fresh Level 1 bots? [Y/N]: ").strip().lower()
+            if do_purge == 'y':
+                purge_bots_sequence(context)
+            else:
+                DockerService.reload_worldserver_config()
+    elif choice == "2":
+        if ConfigManager.update_conf_values({
+            "AiPlayerbot.DisableRandomLevels": "0"
+        }):
+            DockerService.reload_worldserver_config()
+            print("\n=====================================================")
+            print(" SUCCESS: Random Level Bot Spawns Enabled!")
+            print("=====================================================")
+
+
 # ==============================================================================
 # MENU BUILDER & FACTORY
 # ==============================================================================
@@ -1014,8 +1052,9 @@ def create_application_menus() -> BaseMenu:
 
     bot_menu.add_option(SubMenuOption("1", "Adjust Bot Population Density", "Set bot counts based on performance impact", pop_menu))
     bot_menu.add_option(SubMenuOption("2", "Open World RPG Activity Presets", "Tune bot open world behaviors (Questing, Grinding, PvP, Idling)", rpg_menu))
-    bot_menu.add_option(ActionOption("3", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action))
-    bot_menu.add_option(ActionOption("4", "Auction House Bot Setup", "Optionally enable or configure AH Bot character/GUID", ahbot_setup_action))
+    bot_menu.add_option(ActionOption("3", "Bot Starting Level Mode", "Set bot spawn behavior (Force Level 1 vs Random levels)", bot_starting_level_action))
+    bot_menu.add_option(ActionOption("4", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action))
+    bot_menu.add_option(ActionOption("5", "Auction House Bot Setup", "Optionally enable or configure AH Bot character/GUID", ahbot_setup_action))
     main_menu.add_option(SubMenuOption("4", "Bot Management & Population", "Reset bots, adjust population, or set open world RPG activity", bot_menu))
 
 

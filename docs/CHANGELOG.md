@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2026-08-26
+
+### Control Hub & Playerbot Spawn Controls
+- Updated `skirmish/menu.py` Server Stop action to execute `docker compose down` directly without prematurely aborting on container status checks.
+- Configured `AiPlayerbot.AutoTeleportForLevel = 1` as default in `env/dist/etc/modules/playerbots.conf` so high-level bots automatically teleport to level-appropriate zones upon spawn/login.
+- Added **Bot Starting Level Mode** option to Option 4 (Bot Management & Population) in `skirmish/menu.py`, enabling users to toggle forced Level 1 starter spawns (`DisableRandomLevels = 1`) with optional instant bot account purge & repopulation.
+- Expanded Pytest suite (`tests/test_menu_py.py`) to cover Bot Starting Level Mode configuration options.
+
 ## [1.0.3] - 2026-08-26
 
 ### Submodule Resolution & Auto-Healing
