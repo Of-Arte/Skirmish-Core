@@ -304,18 +304,30 @@ def test_bot_population_presets_config_mutation():
 
 def test_rpg_weight_preset_config_mutation():
     """Verify Open World PvP & World Activity presets update RpgStatusProbWeight values in playerbots.conf."""
+    # Pre-condition: Set EnableNewRpgStrategy to 0 to test auto-activation
+    with open(CONF_FILE, "w", encoding="utf-8") as f:
+        f.write("AiPlayerbot.EnableNewRpgStrategy = 0\n")
+
     # Test World PvP Skirmishers
     stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "4", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Open World PvP & World Activity set to 'World PvP Skirmishers'" in stdout
+    assert "AiPlayerbot.EnableNewRpgStrategy was disabled (0) and has" in stdout
+    assert "been automatically enabled (1) to make these weights active." in stdout
+    assert "CLARIFICATION HINT ON OUTDOOR PVP:" in stdout
+    assert "The 'OutdoorPvp' weight only applies to bots *already located*" in stdout
+
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.RpgStatusProbWeight.OutdoorPvp = 80" in content
+        assert "AiPlayerbot.EnableNewRpgStrategy = 1" in content
 
-    # Test Balanced World Activity
+    # Test Balanced World Activity when strategy is already active
     stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "1", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Open World PvP & World Activity set to 'Balanced World Activity'" in stdout
+    assert "RPG Strategy (AiPlayerbot.EnableNewRpgStrategy) is active (1)." in stdout
+    assert "CLARIFICATION HINT ON OUTDOOR PVP:" in stdout
 
     # Test Town Idlers
     stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "5", "", "0", "0", "0"])

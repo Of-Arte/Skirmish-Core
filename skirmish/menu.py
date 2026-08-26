@@ -1377,7 +1377,15 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
 
 def rpg_weight_preset_action(preset_name: str, weights: dict):
     print(f"\nConfiguring Open World PvP & World Activity Weights: {preset_name}...")
+    
+    current_strategy = ConfigManager.get_conf_value("AiPlayerbot.EnableNewRpgStrategy", "1")
+    strategy_activated = False
+    
     conf_updates = {f"AiPlayerbot.RpgStatusProbWeight.{k}": str(v) for k, v in weights.items()}
+    if current_strategy != "1":
+        conf_updates["AiPlayerbot.EnableNewRpgStrategy"] = "1"
+        strategy_activated = True
+
     if ConfigManager.update_conf_values(conf_updates):
         DockerService.reload_worldserver_config()
         print("\n=====================================================")
@@ -1386,6 +1394,20 @@ def rpg_weight_preset_action(preset_name: str, weights: dict):
         print(" Active Behavior Weights:")
         for k, v in weights.items():
             print(f"   - {k:<15} : {v}")
+        print("-----------------------------------------------------")
+        if strategy_activated:
+            print(" [NOTE] AiPlayerbot.EnableNewRpgStrategy was disabled (0) and has")
+            print("        been automatically enabled (1) to make these weights active.")
+        else:
+            print(" [OK] RPG Strategy (AiPlayerbot.EnableNewRpgStrategy) is active (1).")
+        print("-----------------------------------------------------")
+        print(" CLARIFICATION HINT ON OUTDOOR PVP:")
+        print(" - The 'OutdoorPvp' weight only applies to bots *already located*")
+        print("   inside an active outdoor PvP zone (e.g. Silithus, Eastern Plaguelands,")
+        print("   Hellfire Peninsula, Wintergrasp, etc.).")
+        print(" - Raising this weight will NOT make bots travel from capital cities")
+        print("   or questing zones to outdoor PvP objectives; they will only")
+        print("   participate if they happen to enter those zones naturally.")
         print("=====================================================")
 
 
