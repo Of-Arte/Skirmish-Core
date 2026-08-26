@@ -106,10 +106,9 @@ All server and module configuration override files are located under the `env/di
 
 ### Auction House Bot Setup (Optional)
 By default, standard playerbots interact with the Auction House naturally. If you wish to enable the dedicated `mod-ah-bot` system to automatically populate or buyout AH listings:
-1. Create an AH bot account in the Worldserver Console (Option 1 -> 3): `.account create ahbot password`.
-2. Log into WoW using account `ahbot` (`password`) and create a character (suggested name: `Auctioneer`). **Do NOT enter the game world with this character; leave it at character selection and exit.**
-3. Launch `menu.cmd` -> Select **4. Bot Management & Population** -> **5. Auction House Bot Setup**.
-4. Select **3. Auto-Detect & Select Character GUID from Database** to automatically link your character, then select **1. Enable AH Bot**.
+1. Launch `menu.cmd` -> Select **4. Bot Management & Population** -> **5. Auction House Bot Setup**.
+2. Select **1. Interactive AH-Bot Setup Wizard (Recommended)**.
+3. Follow the 3-step wizard prompts to automatically create the account, log into WoW to create your character (suggested name: `Auctioneer`), and auto-link your character to AH Bot!
 
 For details on generating configuration files, tuning bot progression, configuring Level 1 fresh server starts, and resetting bot accounts, see the dedicated [docs/CONFIGURATION.md](docs/CONFIGURATION.md) guide.
 
