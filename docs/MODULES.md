@@ -36,23 +36,21 @@ To enable AH-Bot, assign it to a dedicated character and set `AuctionHouseBot.GU
    ```
    .account create ahbot password
    ```
-2. Log into WoW using account `ahbot` / `password` and create a character named `Ahbot`.
+2. Log into WoW using account `ahbot` / `password` and create a character (suggested name: `Auctioneer`).
+3. **IMPORTANT**: Do **NOT** enter the game world with this bot character! Simply create the character at the character creation screen, then exit. (Logging into the game world on an AH-Bot character can cause issues like infinite "Searching for items...").
 
-### Step 2: Get Character GUID
-Choose one of the following methods to find the character GUID:
+### Step 2: Select Character GUID
+Choose one of the following methods to select the character GUID:
 
-* **Option A (WorldServer / GM Command)**:
-  In the `worldserver` console or in-game GM chat, run:
-  ```
-  .pinfo Ahbot
-  ```
-  Look for `guid: X` (or `GUID: X`) in the output string.
+* **Option A (Skirmish Control Hub CLI - Recommended)**:
+  Open the Control Hub menu (`skirmish/menu.py`) -> Option 4 -> Option 5 -> Option 3 (`Auto-Detect & Select Character GUID`).
 
 * **Option B (Docker / Database Query)**:
-  Run this command in your terminal:
+  Run this command in your terminal to view existing character GUIDs:
   ```bash
-  docker compose exec ac-database mysql -uroot -proot acore_characters -e "SELECT guid, name FROM characters WHERE name = 'Ahbot';"
+  docker compose exec ac-database mysql -uroot -proot acore_characters -e "SELECT guid, name FROM characters WHERE name = 'Auctioneer';"
   ```
+
 
 ### Step 3: Configure `mod_ahbot.conf`
 Open `env/dist/etc/modules/mod_ahbot.conf` and set:

@@ -8,7 +8,8 @@ All notable changes to this project will be documented in this file.
 - Updated `skirmish/menu.py` Server Stop action to execute `docker compose down` directly without prematurely aborting on container status checks.
 - Configured `AiPlayerbot.AutoTeleportForLevel = 1` as default in `env/dist/etc/modules/playerbots.conf` so high-level bots automatically teleport to level-appropriate zones upon spawn/login.
 - Added **Bot Starting Level Mode** option to Option 4 (Bot Management & Population) in `skirmish/menu.py`, enabling users to toggle forced Level 1 starter spawns (`DisableRandomLevels = 1`) with optional instant bot account purge & repopulation.
-- Expanded Pytest suite (`tests/test_menu_py.py`) to cover Bot Starting Level Mode configuration options.
+- Enhanced Option 4 -> 5 (AH Bot Setup) in `skirmish/menu.py` with real-time configuration status, automated MySQL character GUID detection, and step-by-step in-menu setup guide.
+- Expanded Pytest suite (`tests/test_menu_py.py`) to cover Bot Starting Level Mode and AH Bot Setup menu configuration options.
 
 ## [1.0.3] - 2026-08-26
 
