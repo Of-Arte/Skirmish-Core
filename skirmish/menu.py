@@ -33,6 +33,13 @@ def safe_input(prompt: str = "") -> str:
         return "0"
 
 
+def sanitize_sql(val: str) -> str:
+    """Escapes single quotes and backslashes for safe inline SQL query string formatting."""
+    if not val:
+        return ""
+    return val.replace("\\", "\\\\").replace("'", "''")
+
+
 # ==============================================================================
 # BASE OOP MENU CLASSES
 # ==============================================================================
@@ -556,14 +563,14 @@ class DockerService:
 class ConfigManager:
     @staticmethod
     def get_conf_value(key: str, default: str = "", conf_path: str = CONF_FILE) -> str:
-        """Reads a configuration value from a .conf file using UTF-8 encoding."""
+        """Reads an active (uncommented) configuration value from a .conf file using UTF-8 encoding."""
         if not os.path.exists(conf_path):
             return default
         try:
             with open(conf_path, "r", encoding="utf-8") as f:
                 content = f.read()
-            pattern = rf"{re.escape(key)}\s*=\s*([^\r\n]*)"
-            match = re.search(pattern, content)
+            pattern = rf"^[ \t]*{re.escape(key)}\s*=\s*([^\r\n]*)"
+            match = re.search(pattern, content, re.MULTILINE)
             if match:
                 return match.group(1).strip()
         except Exception:
@@ -574,7 +581,7 @@ class ConfigManager:
     def update_conf_values(updates: dict, conf_path: str = CONF_FILE) -> bool:
         """
         Safely updates configuration key-value pairs using python regex and UTF-8 encoding.
-        `updates` maps regex patterns / key names to new values.
+        Matches active, uncommented lines starting with key = ...
         """
         if not os.path.exists(conf_path):
             os.makedirs(os.path.dirname(conf_path), exist_ok=True)
@@ -591,11 +598,13 @@ class ConfigManager:
                 content = f.read()
 
             for key, val in updates.items():
-                pattern = rf"({re.escape(key)}\s*=\s*)[^\r\n]*"
-                if re.search(pattern, content):
-                    content = re.sub(pattern, rf"\g<1>{val}", content)
+                pattern = rf"^[ \t]*({re.escape(key)}\s*=\s*)[^\r\n]*"
+                if re.search(pattern, content, re.MULTILINE):
+                    content = re.sub(pattern, rf"\g<1>{val}", content, flags=re.MULTILINE)
                 else:
-                    content += f"\n{key} = {val}\n"
+                    if content and not content.endswith("\n"):
+                        content += "\n"
+                    content += f"{key} = {val}\n"
 
             with open(conf_path, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -603,6 +612,7 @@ class ConfigManager:
         except Exception as e:
             print(f"Error updating configuration file: {e}")
             return False
+
 
 
 
@@ -705,6 +715,8 @@ def create_account_action(context: dict):
     print(f"\nConfiguring account '{user}' with status {rank_str}...", flush=True)
     account_created = False
     gm_applied = False
+    safe_user = sanitize_sql(user)
+    safe_pass = sanitize_sql(password)
 
     if ws_online:
         try:
@@ -726,7 +738,7 @@ def create_account_action(context: dict):
         try:
             res = subprocess.run(
                 ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                 f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{user}');"],
+                 f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{safe_user}');"],
                 cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
             )
             acc_id = None
@@ -738,13 +750,13 @@ def create_account_action(context: dict):
             if not account_created and not acc_id:
                 subprocess.run(
                     ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                     f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{user}'), UNHEX(''), UNHEX(''));"],
+                     f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{safe_user}'), UNHEX(''), UNHEX(''));"],
                     cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
                 )
                 account_created = True
                 res = subprocess.run(
                     ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                     f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{user}');"],
+                     f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{safe_user}');"],
                     cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
                 )
                 if res.returncode == 0 and res.stdout:
@@ -763,14 +775,17 @@ def create_account_action(context: dict):
             print(f"Warning: Database update error: {e}")
 
     print("\n=====================================================")
-    print(f" SUCCESS: Account '{user}' configured successfully!")
-    print("=====================================================")
-    print(f" Username  : {user}")
-    print(f" Password  : {password}")
-    print(f" GM Status : {rank_str}")
-    if not ws_online and not db_online:
-        print(" [NOTE] Server is offline. Account details will take effect")
-        print("        when the server stack is started!")
+    if account_created or gm_applied:
+        print(f" SUCCESS: Account '{user}' configured successfully!")
+        print("=====================================================")
+        print(f" Username  : {user}")
+        print(f" Password  : {password}")
+        print(f" GM Status : {rank_str}")
+    else:
+        print(f" ERROR: Account '{user}' could not be created!")
+        print("=====================================================")
+        print(" Reason    : Server stack and database containers are OFFLINE.")
+        print("             Please start the server stack (Option 1 -> 1) first.")
     print("=====================================================")
 
 
@@ -872,6 +887,10 @@ def coop_action(context: dict):
         print("Address update canceled.")
         return
 
+    if not re.match(r"^[a-zA-Z0-9.\-_]+$", new_ip):
+        print("\nInvalid input: Address must be a valid IP address or hostname.")
+        return
+
     if DockerService.get_container_status("ac-database") == "OFFLINE":
         print("\n[!] WARNING: Database container is currently OFFLINE.")
         print("    Updating server address requires the database to be running.")
@@ -886,8 +905,9 @@ def coop_action(context: dict):
             print("Address update canceled.")
             return
 
+    safe_ip = sanitize_sql(new_ip)
     print(f"\nUpdating server address to {new_ip}...")
-    sql_cmd = f"UPDATE acore_auth.realmlist SET address='{new_ip}' WHERE id=1;"
+    sql_cmd = f"UPDATE acore_auth.realmlist SET address='{safe_ip}' WHERE id=1;"
     res = subprocess.run(
         ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", sql_cmd],
         cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
@@ -898,6 +918,7 @@ def coop_action(context: dict):
         print(f"       set realmlist {new_ip}")
     else:
         print(f"\nWarning: Could not update server address in database: {res.stderr}")
+
 
 
 def purge_bots_sequence(context: dict) -> bool:
@@ -1090,6 +1111,9 @@ def custom_skirmish_action(context: dict):
         print("\nInvalid input: Minimum level cannot be greater than maximum level.")
         return
 
+    skirmish_preset_action(min_lvl, max_lvl)
+
+
 def ahbot_setup_action(context: dict):
     print("\n=====================================================")
     print("          AUCTION HOUSE BOT (AHBOT) SETUP")
@@ -1121,8 +1145,10 @@ def ahbot_setup_action(context: dict):
             prompt_guid = safe_input("Do you want to enter a Character GUID now? [y/N]: ").strip().lower()
             if prompt_guid == 'y':
                 guid = safe_input("Enter Character GUID: ").strip()
-                if guid:
+                if guid and guid.isdigit():
                     current_guid = guid
+                elif guid:
+                    print("\n[!] Invalid input: GUID must be a positive integer.")
         updates = {
             "AuctionHouseBot.EnableSeller": "true",
             "AuctionHouseBot.Buyer.Enabled": "true",
@@ -1181,6 +1207,8 @@ def ahbot_interactive_wizard(context: dict):
 
     print(f"\nCreating account '{user}' in server database...", flush=True)
     account_created = False
+    safe_user = sanitize_sql(user)
+    safe_pass = sanitize_sql(password)
 
     if ws_online:
         try:
@@ -1196,7 +1224,7 @@ def ahbot_interactive_wizard(context: dict):
         try:
             res = subprocess.run(
                 ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                 f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{user}'), UNHEX(''), UNHEX(''));"],
+                 f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{safe_user}'), UNHEX(''), UNHEX(''));"],
                 cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
             account_created = True
@@ -1221,13 +1249,14 @@ def ahbot_interactive_wizard(context: dict):
     # Step 3: Character Name & Auto-Link Loop
     while True:
         char_name = safe_input("\n[Step 3/3] Enter the character name you created [default: Auctioneer]: ").strip() or "Auctioneer"
+        safe_char = sanitize_sql(char_name)
 
         found_guid = None
         if DockerService.get_container_status("ac-database") == "ONLINE":
             try:
                 res = subprocess.run(
                     ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
-                     f"SELECT guid FROM acore_characters.characters WHERE LOWER(name) = LOWER('{char_name}');"],
+                     f"SELECT guid FROM acore_characters.characters WHERE LOWER(name) = LOWER('{safe_char}');"],
                     cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
                 )
                 if res.returncode == 0 and res.stdout:
@@ -1309,7 +1338,9 @@ def show_database_characters_menu():
         print("  ---------------------------------------------------")
         selected_guid = safe_input("\nEnter GUID to assign to AH Bot (or press Enter to cancel): ").strip()
         if selected_guid:
-            if ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": selected_guid}, conf_path=AHBOT_CONF_FILE):
+            if not selected_guid.isdigit():
+                print("\n[!] Invalid input: GUID must be a positive integer.")
+            elif ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": selected_guid}, conf_path=AHBOT_CONF_FILE):
                 DockerService.reload_worldserver_config()
                 print("\n=====================================================")
                 print(f" SUCCESS: AH Bot Character GUID set to {selected_guid}!")
@@ -1317,6 +1348,7 @@ def show_database_characters_menu():
     else:
         print("\n[!] No characters found in database (or database container is OFFLINE).")
         print("=====================================================")
+
 
 
 def bot_starting_level_action(context: dict):
