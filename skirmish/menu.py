@@ -1143,6 +1143,10 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
 
     level_brackets_enabled = "1" if max_level == 80 else "0"
 
+    # Restore player level sync preference if one was backed up during skirmish mode
+    backup_sync = ConfigManager.get_conf_value("AiPlayerbot.SyncLevelWithPlayers.Backup", "")
+    sync_value = backup_sync if backup_sync else "0"
+
     pb_success = ConfigManager.update_conf_values({
         "AiPlayerbot.RandomBotMinLevel": "1",
         "AiPlayerbot.RandomBotMaxLevel": str(max_level),
@@ -1150,7 +1154,9 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
         "AiPlayerbot.RandomBotFixedLevel": "0",
         "AiPlayerbot.DisableRandomLevels": "0",
         "AiPlayerbot.LevelBrackets.Enabled": level_brackets_enabled,
-        "AiPlayerbot.ResetBotLevel.MaxLevel": str(max_level)
+        "AiPlayerbot.ResetBotLevel.MaxLevel": str(max_level),
+        "AiPlayerbot.SyncLevelWithPlayers": sync_value,
+        "AiPlayerbot.SyncLevelWithPlayers.Backup": ""
     })
 
     ip_success = ConfigManager.update_conf_values({
@@ -1200,9 +1206,17 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
         ip_start = "8"
         ip_limit = "13"
 
-    # Set RandomBotFixedLevel = 0 for full level ranges starting at Level 1 (e.g. 1-60, 1-70, 1-80)
-    # Set RandomBotFixedLevel = 1 for fixed PvP brackets (e.g. 10-20, 20-30, 70-80) where bots should not gain XP
-    fixed_level = "0" if (min_lvl == 1 or (min_lvl == 1 and max_lvl in (60, 70, 80))) else "1"
+    # Set RandomBotFixedLevel = 0 for wide ranges where natural leveling is expected
+    # Set RandomBotFixedLevel = 1 for narrow PvP brackets (span <= 20) where bots should not gain XP
+    fixed_level = "1" if (max_lvl - min_lvl) <= 20 else "0"
+
+    # Read the current sync level to preserve user preference before disabling it
+    current_sync = ConfigManager.get_conf_value("AiPlayerbot.SyncLevelWithPlayers", "0")
+    backup_sync = ConfigManager.get_conf_value("AiPlayerbot.SyncLevelWithPlayers.Backup", "")
+
+    # Only write backup if one doesn't already exist (to preserve original setting)
+    if not backup_sync:
+        ConfigManager.update_conf_values({"AiPlayerbot.SyncLevelWithPlayers.Backup": current_sync})
 
     print(f"\nApplying Skirmish Config: Level Range [{min_lvl} - {max_lvl}]...")
     ConfigManager.update_conf_values({

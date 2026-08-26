@@ -416,6 +416,18 @@ def test_custom_skirmish_action_executes_preset():
         assert "IndividualProgression.BotAccountsMaxLevel = 45" in ip_content
 
 
+def test_custom_skirmish_action_wide_span_sets_fixed_level_zero():
+    """Verify custom range with span > 20 (e.g. 10-60) sets RandomBotFixedLevel = 0 for natural leveling."""
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "8", "10", "60", "n", "", "0", "0", "0"])
+    assert code == 0
+    assert "Applying Skirmish Config: Level Range [10 - 60]" in stdout
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.RandomBotMinLevel = 10" in content
+        assert "AiPlayerbot.RandomBotMaxLevel = 60" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
+
+
 def test_custom_skirmish_action_level_1_sets_fixed_level_zero():
     """Verify custom range starting at Level 1 sets RandomBotFixedLevel = 0 for natural leveling."""
     stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "8", "1", "60", "n", "", "0", "0", "0"])
@@ -428,6 +440,41 @@ def test_custom_skirmish_action_level_1_sets_fixed_level_zero():
         assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
         assert "AiPlayerbot.LevelBrackets.Enabled = 0" in content
         assert "AiPlayerbot.ResetBotLevel.MaxLevel = 60" in content
+
+
+def test_custom_skirmish_action_small_span_starting_at_1_sets_fixed_level_one():
+    """Verify range like 1-20 (span <= 20) sets RandomBotFixedLevel = 1 to lock bots to bracket."""
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "8", "1", "20", "n", "", "0", "0", "0"])
+    assert code == 0
+    assert "Applying Skirmish Config: Level Range [1 - 20]" in stdout
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.RandomBotMinLevel = 1" in content
+        assert "AiPlayerbot.RandomBotMaxLevel = 20" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 1" in content
+
+
+def test_sync_level_with_players_backup_and_restore():
+    """Verify that SyncLevelWithPlayers preference is backed up during skirmish and restored during expansion config."""
+    # 1. Enable SyncLevelWithPlayers first in config
+    with open(CONF_FILE, "w", encoding="utf-8") as f:
+        f.write("AiPlayerbot.SyncLevelWithPlayers = 1\n")
+
+    # 2. Activate skirmish mode (10-20), which should backup the value '1' and set the active option to '0'
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "1", "n", "", "0", "0", "0"])
+    assert code == 0
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.SyncLevelWithPlayers = 0" in content
+        assert "AiPlayerbot.SyncLevelWithPlayers.Backup = 1" in content
+
+    # 3. Return to Expansion Mode (WotLK Mode), which should restore the backup '1' and clear the backup option
+    stdout, stderr, code = run_menu_py_with_inputs(["2", "3", "n", "", "0", "0"])
+    assert code == 0
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.SyncLevelWithPlayers = 1" in content
+        assert "AiPlayerbot.SyncLevelWithPlayers.Backup = " in content
 
 
 def test_skirmish_custom_range_validation():

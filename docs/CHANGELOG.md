@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-08-26
+
+### Skirmish Mode PvP Brackets & Scheduler Guards
+- **Dynamic Fixed Level Bracket Span**: Updated skirmish presets to calculate `RandomBotFixedLevel` using a span limit check (`max_lvl - min_lvl <= 20`), resolving issues with custom wide ranges (e.g. `10-60`) locking bot XP, while keeping narrow low-level brackets (like `1-20`) locked.
+- **Level Brackets Scheduler Bypass**: Guarded `RandomBotLevelMgr::Update` in the `mod-playerbots` C++ module to prevent the background Level Brackets distributor scheduler and level resets from overriding fixed level PvP brackets when `randomBotFixedLevel` is enabled.
+- **Player Level Sync Restore**: Implemented backup and restoration of `AiPlayerbot.SyncLevelWithPlayers` using `AiPlayerbot.SyncLevelWithPlayers.Backup` to preserve user preferences when switching modes.
+- **Unit Tests**: Added coverage for fixed level span configurations and SyncLevelWithPlayers preferences.
+
 ## [1.0.9] - 2026-08-26
 
 ### Expansion Setup & Configuration Integration
