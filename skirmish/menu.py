@@ -1487,6 +1487,46 @@ def custom_skirmish_action(context: dict):
     skirmish_preset_action(min_lvl, max_lvl)
 
 
+def verify_character_guid(guid: str) -> tuple:
+    """
+    Verifies if a character GUID is valid for AH Bot (exists and not a playerbot bot).
+    Returns (is_valid, error_message).
+    """
+    if not guid or not guid.isdigit() or int(guid) <= 0:
+        return False, "GUID must be a positive integer."
+
+    if DockerService.get_container_status("ac-database") != "ONLINE":
+        return True, "Notice: Database container is offline. Skipping database verification."
+
+    prefix = ConfigManager.get_conf_value("AiPlayerbot.RandomBotAccountPrefix", "rndbot").lower().strip('"' + "'")
+    safe_prefix = sanitize_sql(prefix)
+
+    query = (
+        f"SELECT c.name, COALESCE(a.username, '') FROM acore_characters.characters c "
+        f"LEFT JOIN acore_auth.account a ON c.account = a.id "
+        f"WHERE c.guid = {int(guid)};"
+    )
+    try:
+        res = subprocess.run(
+            ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", query],
+            cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+        )
+        if res.returncode == 0 and res.stdout:
+            lines = [line.strip() for line in res.stdout.strip().splitlines() if line.strip()]
+            if len(lines) > 1:
+                parts = lines[-1].split()
+                if len(parts) >= 2:
+                    char_name = parts[0]
+                    username = parts[1].lower()
+                    if username.startswith(prefix.lower()):
+                        return False, f"Character '{char_name}' (GUID {guid}) belongs to a bot account ({username}). Using playerbots will likely crash the server."
+                return True, ""
+    except Exception as e:
+        return True, f"Notice: Database query failed ({e}), could not verify GUID."
+
+    return False, f"Character GUID {guid} does not exist in the database."
+
+
 def ahbot_setup_action(context: dict):
     print("\n=====================================================")
     print("          AUCTION HOUSE BOT (AHBOT) SETUP")
@@ -1518,14 +1558,27 @@ def ahbot_setup_action(context: dict):
             prompt_guid = safe_input("Do you want to enter a Character GUID now? [y/N]: ").strip().lower()
             if prompt_guid == 'y':
                 guid = safe_input("Enter Character GUID: ").strip()
-                if guid and guid.isdigit():
+                is_valid, err = verify_character_guid(guid)
+                if not is_valid:
+                    print(f"\n[!] Error: {err}")
+                else:
                     current_guid = guid
-                elif guid:
-                    print("\n[!] Invalid input: GUID must be a positive integer.")
+
+        if not current_guid or current_guid == "0":
+            print("\n[!] Error: Cannot enable Auction House Bot without a valid Character GUID.")
+            print("    Please select or configure a character GUID first using Option 1 (Wizard) or Option 4.")
+            return
+
+        is_valid, err = verify_character_guid(current_guid)
+        if not is_valid:
+            print(f"\n[!] Error: {err}")
+            print("    Please select or configure a valid character GUID first.")
+            return
+
         updates = {
             "AuctionHouseBot.EnableSeller": "true",
             "AuctionHouseBot.Buyer.Enabled": "true",
-            "AuctionHouseBot.GUIDs": current_guid if current_guid else "0"
+            "AuctionHouseBot.GUIDs": current_guid
         }
         if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
             DockerService.reload_worldserver_config()
@@ -1646,18 +1699,22 @@ def ahbot_interactive_wizard(context: dict):
                 print(f"Error querying database: {e}")
 
         if found_guid and found_guid.isdigit():
-            updates = {
-                "AuctionHouseBot.EnableSeller": "true",
-                "AuctionHouseBot.Buyer.Enabled": "true",
-                "AuctionHouseBot.GUIDs": found_guid
-            }
-            if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
-                DockerService.reload_worldserver_config()
-                print("\n=====================================================")
-                print(" SUCCESS: AH Bot Fully Configured & Enabled!")
-                print(f" Linked Character : {char_name} (GUID: {found_guid})")
-                print("=====================================================")
-                return
+            is_valid, err = verify_character_guid(found_guid)
+            if not is_valid:
+                print(f"\n[!] Auto-link failed: {err}")
+            else:
+                updates = {
+                    "AuctionHouseBot.EnableSeller": "true",
+                    "AuctionHouseBot.Buyer.Enabled": "true",
+                    "AuctionHouseBot.GUIDs": found_guid
+                }
+                if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
+                    DockerService.reload_worldserver_config()
+                    print("\n=====================================================")
+                    print(" SUCCESS: AH Bot Fully Configured & Enabled!")
+                    print(f" Linked Character : {char_name} (GUID: {found_guid})")
+                    print("=====================================================")
+                    return
         else:
             print(f"\n[!] Character '{char_name}' was not found in the database.")
             print("    (Ensure you created the character in WoW and the server stack is running).")
@@ -1670,18 +1727,22 @@ def ahbot_interactive_wizard(context: dict):
                 continue
             elif wiz_choice == "2":
                 manual_guid = safe_input("Enter Character GUID: ").strip()
-                if manual_guid and manual_guid.isdigit():
-                    updates = {
-                        "AuctionHouseBot.EnableSeller": "true",
-                        "AuctionHouseBot.Buyer.Enabled": "true",
-                        "AuctionHouseBot.GUIDs": manual_guid
-                    }
-                    if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
-                        DockerService.reload_worldserver_config()
-                        print("\n=====================================================")
-                        print(f" SUCCESS: AH Bot Configured with Manual GUID {manual_guid}!")
-                        print("=====================================================")
-                        return
+                if manual_guid:
+                    is_valid, err = verify_character_guid(manual_guid)
+                    if not is_valid:
+                        print(f"\n[!] Error: {err}")
+                    else:
+                        updates = {
+                            "AuctionHouseBot.EnableSeller": "true",
+                            "AuctionHouseBot.Buyer.Enabled": "true",
+                            "AuctionHouseBot.GUIDs": manual_guid
+                        }
+                        if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
+                            DockerService.reload_worldserver_config()
+                            print("\n=====================================================")
+                            print(f" SUCCESS: AH Bot Configured with Manual GUID {manual_guid}!")
+                            print("=====================================================")
+                            return
             else:
                 print("\nWizard canceled.")
                 return
@@ -1692,8 +1753,16 @@ def show_database_characters_menu():
     chars = []
     if DockerService.get_container_status("ac-database") == "ONLINE":
         try:
+            prefix = ConfigManager.get_conf_value("AiPlayerbot.RandomBotAccountPrefix", "rndbot").lower().strip('"' + "'")
+            safe_prefix = sanitize_sql(prefix)
+            query = (
+                "SELECT c.guid, c.name, c.account "
+                "FROM acore_characters.characters c "
+                "LEFT JOIN acore_auth.account a ON c.account = a.id "
+                f"WHERE a.username IS NULL OR LOWER(a.username) NOT LIKE '{safe_prefix.lower()}%';"
+            )
             res = subprocess.run(
-                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", "SELECT guid, name, account FROM acore_characters.characters;"],
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", query],
                 cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
             )
             if res.returncode == 0 and res.stdout:
@@ -1717,8 +1786,9 @@ def show_database_characters_menu():
         print("  ---------------------------------------------------")
         selected_guid = safe_input("\nEnter GUID to assign to AH Bot (or press Enter to cancel): ").strip()
         if selected_guid:
-            if not selected_guid.isdigit():
-                print("\n[!] Invalid input: GUID must be a positive integer.")
+            is_valid, err = verify_character_guid(selected_guid)
+            if not is_valid:
+                print(f"\n[!] Error: {err}")
             elif ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": selected_guid}, conf_path=AHBOT_CONF_FILE):
                 DockerService.reload_worldserver_config()
                 print("\n=====================================================")

@@ -643,7 +643,16 @@ def test_ahbot_setup_menu():
     # Test option 2 with invalid non-numeric GUID
     stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "2", "y", "invalid_guid", "", "0", "0"])
     assert code == 0
-    assert "Invalid input: GUID must be a positive integer." in stdout
+    assert "GUID must be a positive integer." in stdout
+
+    # Reset GUIDs to 0 again
+    menu_mod.ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": "0"}, conf_path=ahbot_conf)
+
+    # Test option 2 without inputting a GUID when GUID is 0 (selecting 'n' when prompted)
+    # This should block enabling
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "2", "n", "", "0", "0"])
+    assert code == 0
+    assert "Cannot enable Auction House Bot without a valid Character GUID" in stdout
 
     # Reset GUIDs to 0 again
     menu_mod.ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": "0"}, conf_path=ahbot_conf)
@@ -665,6 +674,48 @@ def test_ahbot_setup_menu():
     stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "4", "", "0", "0"])
     assert code == 0
     assert "No characters found in database" in stdout
+
+
+def test_verify_character_guid_mocked(monkeypatch):
+    """Verify verify_character_guid detects bot characters, non-existent characters, and valid players."""
+    import skirmish.menu as menu_mod
+    monkeypatch.setattr(menu_mod.DockerService, "get_container_status", lambda svc: "ONLINE")
+
+    # Case 1: Character doesn't exist
+    def fake_run_empty(cmd, **kwargs):
+        class DummyCompleted:
+            returncode = 0
+            stdout = "name\tusername\n"
+            stderr = ""
+        return DummyCompleted()
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run_empty)
+    is_valid, err = menu_mod.verify_character_guid("123")
+    assert not is_valid
+    assert "does not exist in the database" in err
+
+    # Case 2: Character belongs to a bot account (prefix rndbot)
+    def fake_run_bot(cmd, **kwargs):
+        class DummyCompleted:
+            returncode = 0
+            stdout = "name\tusername\nMyBot\trndbot33\n"
+            stderr = ""
+        return DummyCompleted()
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run_bot)
+    is_valid, err = menu_mod.verify_character_guid("124")
+    assert not is_valid
+    assert "belongs to a bot account" in err
+
+    # Case 3: Character is a normal player
+    def fake_run_player(cmd, **kwargs):
+        class DummyCompleted:
+            returncode = 0
+            stdout = "name\tusername\nMyPlayer\tmyaccount\n"
+            stderr = ""
+        return DummyCompleted()
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run_player)
+    is_valid, err = menu_mod.verify_character_guid("125")
+    assert is_valid
+    assert err == ""
 
 
 def test_server_offline_annotations_shown_when_server_down():

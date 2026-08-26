@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-08-26
+
+### Auction House Bot Setup Hardening
+- **Character GUID Validation**: Added `verify_character_guid` in `skirmish/menu.py` to validate character existence and prevent server crashes caused by assigning playerbot characters (`rndbot*` prefixes).
+- **Bot Filtering in Character List**: Updated database selection query in `show_database_characters_menu` to join character and account tables, filtering out bot accounts matching the configured prefix.
+- **Enablement Safeguard**: Blocked enabling the Auction House Bot when no valid character GUID is configured (GUID set to `0` or empty).
+- **Unit Tests**: Added test cases for verifying bot character rejection, missing character validation, and blocked enablement in `tests/test_menu_py.py`.
+
 ## [1.1.0] - 2026-08-26
 
 ### Skirmish Mode PvP Brackets & Scheduler Guards
