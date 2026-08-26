@@ -138,7 +138,55 @@ class BaseMenu:
 # HEALTH DIAGNOSTICS & SYSTEM DOCTOR
 # ==============================================================================
 class HealthChecker:
-    """Comprehensive diagnostic system checking prerequisites, files, Docker daemon, containers, database, and ports."""
+    """Comprehensive diagnostic system checking prerequisites, files, Docker daemon, RAM, containers, database, and ports."""
+
+    @staticmethod
+    def get_ram_info():
+        """Returns (total_gb, avail_gb) using standard library (cross-platform Linux/WSL/Windows)."""
+        total_gb, avail_gb = None, None
+        try:
+            if os.path.exists("/proc/meminfo"):
+                mem = {}
+                with open("/proc/meminfo", "r", encoding="utf-8") as f:
+                    for line in f:
+                        parts = line.split(":")
+                        if len(parts) == 2:
+                            key = parts[0].strip()
+                            val = parts[1].strip().split()[0]
+                            mem[key] = int(val)
+                if "MemTotal" in mem:
+                    total_gb = mem["MemTotal"] / (1024 * 1024)
+                if "MemAvailable" in mem:
+                    avail_gb = mem["MemAvailable"] / (1024 * 1024)
+                elif "MemFree" in mem:
+                    avail_gb = mem["MemFree"] / (1024 * 1024)
+        except Exception:
+            pass
+
+        if total_gb is None and sys.platform == "win32":
+            try:
+                import ctypes
+                class MEMORYSTATUSEX(ctypes.Structure):
+                    _fields_ = [
+                        ("dwLength", ctypes.c_ulong),
+                        ("dwMemoryLoad", ctypes.c_ulong),
+                        ("ullTotalPhys", ctypes.c_ulonglong),
+                        ("ullAvailPhys", ctypes.c_ulonglong),
+                        ("ullTotalPageFile", ctypes.c_ulonglong),
+                        ("ullAvailPageFile", ctypes.c_ulonglong),
+                        ("ullTotalVirtual", ctypes.c_ulonglong),
+                        ("ullAvailVirtual", ctypes.c_ulonglong),
+                        ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                    ]
+                stat = MEMORYSTATUSEX()
+                stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+                if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                    total_gb = stat.ullTotalPhys / (1024 ** 3)
+                    avail_gb = stat.ullAvailPhys / (1024 ** 3)
+            except Exception:
+                pass
+
+        return total_gb, avail_gb
 
     @staticmethod
     def run():
@@ -151,8 +199,8 @@ class HealthChecker:
 
         issues_found = 0
 
-        # 1. System & Python Environment
-        print("[1/5] System & Python Environment")
+        # 1. System & Python Environment + RAM Check
+        print("[1/6] System & RAM Diagnostics")
         py_ver = sys.version.split()[0]
         print(f"  [OK] Python Runtime : {py_ver} ({sys.executable})")
 
@@ -160,15 +208,26 @@ class HealthChecker:
             total, used, free = shutil.disk_usage(REPO_ROOT)
             free_gb = free / (1024 ** 3)
             if free_gb < 5.0:
-                print(f"  [WARN] Disk Space : Only {free_gb:.1f} GB free on repository drive")
+                print(f"  [WARN] Disk Space   : Only {free_gb:.1f} GB free on repository drive")
                 issues_found += 1
             else:
-                print(f"  [OK] Disk Space : {free_gb:.1f} GB free")
+                print(f"  [OK] Disk Space     : {free_gb:.1f} GB free")
         except Exception as e:
-            print(f"  [WARN] Disk Space : Could not calculate ({e})")
+            print(f"  [WARN] Disk Space   : Could not calculate ({e})")
+
+        # RAM Check
+        total_ram, avail_ram = HealthChecker.get_ram_info()
+        if total_ram is not None and avail_ram is not None:
+            if avail_ram < 3.5 or total_ram < 8.0:
+                print(f"  [WARN] System RAM   : {avail_ram:.1f} GB available / {total_ram:.1f} GB total (Low Memory Environment)")
+                print("         -> ADVICE: Available memory is low. Consider:")
+                print("                    1) Selecting 'Low (100 bots)' preset in Option 4 -> 1.")
+                print("                    2) Enabling 'AiPlayerbot.SmartScale.Enabled = 1' in env/dist/etc/modules/playerbots.conf.")
+            else:
+                print(f"  [OK] System RAM     : {avail_ram:.1f} GB available / {total_ram:.1f} GB total")
 
         # 2. File & Configuration Structure
-        print("\n[2/5] Repack Files & Configuration Structure")
+        print("\n[2/6] Repack Files & Configuration Structure")
         if os.path.exists(CORE_DIR):
             print(f"  [OK] Core Directory : Found ({CORE_DIR})")
         else:
@@ -183,7 +242,8 @@ class HealthChecker:
             issues_found += 1
 
         # 3. Docker CLI & Daemon Status
-        print("\n[3/5] Docker Engine & Daemon Health")
+        print("\n[3/6] Docker Engine & Daemon Health")
+        print("  Checking Docker CLI & Daemon status...", flush=True)
         if not shutil.which("docker"):
             print("  [FAIL] Docker Executable : Not found in system PATH")
             issues_found += 1
@@ -198,7 +258,8 @@ class HealthChecker:
             print("  [OK] Docker Daemon : Active & responsive")
 
         # 4. Container Status Inspection
-        print("\n[4/5] Docker Container Stack Status")
+        print("\n[4/6] Docker Container Stack Status")
+        print("  Inspecting container states...", flush=True)
         services = ["ac-worldserver", "ac-authserver", "ac-database", "ac-db-import"]
         offline_count = 0
         for svc in services:
@@ -211,7 +272,8 @@ class HealthChecker:
                     offline_count += 1
 
         # 5. Database & Server Service Checks
-        print("\n[5/5] Database & Port Connectivity")
+        print("\n[5/6] Database & Port Connectivity")
+        print("  Testing MySQL and worldserver connectivity...", flush=True)
 
         # Database query test
         if DockerService.get_container_status("ac-database") == "ONLINE":
@@ -242,15 +304,74 @@ class HealthChecker:
         else:
             print("  [OFF] Worldserver Terminal : Server is offline")
 
+        # 6. Installed Modules Database Integrity Checks
+        print("\n[6/6] Module Database Integrity")
+        print("  Querying installed module tables in MySQL...", flush=True)
+        module_warnings = 0
+        if DockerService.get_container_status("ac-database") == "ONLINE":
+            # Individual Progression check
+            ip_check = subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", "SELECT COUNT(*) FROM acore_world.command WHERE name LIKE 'ip %';"],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            ip_count_str = ip_check.stdout.splitlines()[-1].strip() if ip_check.returncode == 0 and ip_check.stdout.splitlines() else "0"
+            if ip_check.returncode == 0 and ip_count_str.isdigit() and int(ip_count_str) > 0:
+                print("  [OK] Module Individual Progression : Database commands loaded")
+            else:
+                print("  [WARN] Module Individual Progression : Commands missing (run 'Start Server' to import)")
+                module_warnings += 1
+
+            # Acore Mall check
+            mall_check = subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", "SELECT COUNT(*) FROM acore_world.creature WHERE id >= 9100000;"],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            mall_count_str = mall_check.stdout.splitlines()[-1].strip() if mall_check.returncode == 0 and mall_check.stdout.splitlines() else "0"
+            if mall_check.returncode == 0 and mall_count_str.isdigit() and int(mall_count_str) > 0:
+                print(f"  [OK] Module Acore Mall               : GM Island Mall vendors loaded ({mall_count_str} vendors)")
+            else:
+                print("  [WARN] Module Acore Mall               : GM Island Mall vendors missing (run 'Start Server' to import)")
+                module_warnings += 1
+
+            # AH Bot check
+            ah_check = subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", "SELECT COUNT(*) FROM acore_world.mod_auctionhousebot;"],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            if ah_check.returncode == 0 and "ERROR" not in ah_check.stderr:
+                print("  [OK] Module Auction House Bot        : Database tables loaded")
+            else:
+                print("  [WARN] Module Auction House Bot        : Tables missing (run 'Start Server' to import)")
+                module_warnings += 1
+
+            # Playerbots check
+            pb_check = subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", "SHOW DATABASES LIKE 'acore_playerbots';"],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            if pb_check.returncode == 0 and "acore_playerbots" in pb_check.stdout:
+                print("  [OK] Module Playerbots               : Database loaded")
+            else:
+                print("  [WARN] Module Playerbots               : Database missing")
+                module_warnings += 1
+        else:
+            print("  [OFF] Module Database Checks         : Database container is offline")
+
         print("\n-----------------------------------------------------")
         if issues_found > 0:
             print(f" HEALTH CHECK RESULT : {issues_found} CRITICAL SYSTEM ERROR(S) DETECTED")
         elif offline_count > 0:
             print(f" HEALTH CHECK RESULT : ENVIRONMENT OK | SERVER STACK IS OFFLINE ({offline_count} services stopped)")
             print("                      -> Select Option 1 -> 1 (Start Server) to launch stack.")
+        elif module_warnings > 0:
+            print(f" HEALTH CHECK RESULT : SERVER ONLINE | {module_warnings} MODULE DATABASE WARNING(S) DETECTED")
+            print("                      -> Select Option 1 -> 1 (Start Server) to run pending SQL imports.")
         else:
             print(" HEALTH CHECK RESULT : ALL SYSTEMS OPERATIONAL & SERVER ONLINE [100% OK]")
         print("=====================================================")
+
+
+
 
 
 # ==============================================================================
@@ -281,8 +402,10 @@ class DockerService:
     @staticmethod
     def start_stack() -> bool:
         """Launches docker compose up -d stack directly."""
-        print("\nStarting SkirmishCore Docker stack...")
+        print("\nChecking for pending database & module SQL updates...")
         try:
+            subprocess.run(["docker", "compose", "up", "--force-recreate", "ac-db-import"], cwd=CORE_DIR)
+            print("\nStarting SkirmishCore Docker stack...")
             res = subprocess.run(["docker", "compose", "up", "-d"], cwd=CORE_DIR)
             if res.returncode == 0:
                 print("\nSkirmishCore Docker stack started successfully.")
@@ -295,6 +418,7 @@ class DockerService:
         except Exception as e:
             print(f"Error starting Docker stack: {e}")
             return False
+
 
     @staticmethod
     def stop_stack() -> bool:
@@ -353,13 +477,21 @@ class DockerService:
             print("\n[NOTE] Server is offline. Settings will take effect next time server starts!")
 
     @staticmethod
-    def restart_container(service_name: str = "ac-worldserver"):
-        """Restarts a docker compose service."""
-        print(f"\nRestarting container {service_name}...")
-        try:
-            subprocess.run(["docker", "compose", "restart", service_name], cwd=CORE_DIR, check=False)
-        except Exception as e:
-            print(f"Error restarting container {service_name}: {e}")
+    def restart_container(service_name: str = "all"):
+        """Restarts docker compose services."""
+        if service_name == "all":
+            print("\nRestarting server stack (ac-worldserver, ac-authserver)...")
+            try:
+                subprocess.run(["docker", "compose", "restart", "ac-worldserver", "ac-authserver"], cwd=CORE_DIR, check=False)
+            except Exception as e:
+                print(f"Error restarting server containers: {e}")
+        else:
+            print(f"\nRestarting container {service_name}...")
+            try:
+                subprocess.run(["docker", "compose", "restart", service_name], cwd=CORE_DIR, check=False)
+            except Exception as e:
+                print(f"Error restarting container {service_name}: {e}")
+
 
 
 class ConfigManager:

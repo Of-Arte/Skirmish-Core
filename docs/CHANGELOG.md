@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-08-25
+
+### Module Auto-Import & Fixes
+- Added `include.sh` and `conf/conf.sh.dist` for `mod-acore-mall` to enable automatic native database imports for GM Island vendors on fresh builds.
+- Updated `cs_individualProgression.cpp` command security to `SEC_PLAYER` for player-facing `.ip` subcommands (`.ip get`, `.ip setbot`, `.ip setrep`, `.ip pvp`, `.ip attune`).
+- Enabled `AiPlayerbot.LevelBrackets.Enabled = 1` and `AiPlayerbot.ResetBotLevel.Enabled = 0` in `playerbots.conf` to prevent high-level bots from demoting to starter zones.
+
+### Control Hub & Diagnostics
+- Added host/WSL system RAM diagnostics with low-memory warnings and Smart Scale recommendations in `skirmish/menu.py`.
+- Added real-time loading indicators (`flush=True`) across Docker CLI, container, and database diagnostic checks in `HealthChecker`.
+
 ## [1.0.1] - 2026-08-25
 
 ### Skirmish Control Hub & Compatibility
