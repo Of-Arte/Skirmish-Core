@@ -1089,7 +1089,8 @@ def expansion_preset_action(mode_name: str, max_level: int, maps_str: str):
     pb_success = ConfigManager.update_conf_values({
         "AiPlayerbot.RandomBotMinLevel": "1",
         "AiPlayerbot.RandomBotMaxLevel": str(max_level),
-        "AiPlayerbot.RandomBotMaps": maps_str
+        "AiPlayerbot.RandomBotMaps": maps_str,
+        "AiPlayerbot.RandomBotFixedLevel": "0"
     })
 
     ip_success = ConfigManager.update_conf_values({
@@ -1138,12 +1139,17 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
         ip_start = "8"
         ip_limit = "13"
 
+    # Set RandomBotFixedLevel = 0 for full level ranges starting at Level 1 (e.g. 1-60, 1-70, 1-80)
+    # Set RandomBotFixedLevel = 1 for fixed PvP brackets (e.g. 10-20, 20-30, 70-80) where bots should not gain XP
+    fixed_level = "0" if (min_lvl == 1 or (min_lvl == 1 and max_lvl in (60, 70, 80))) else "1"
+
     print(f"\nApplying Skirmish Config: Level Range [{min_lvl} - {max_lvl}]...")
     ConfigManager.update_conf_values({
         "AiPlayerbot.RandomBotMinLevel": str(min_lvl),
         "AiPlayerbot.RandomBotMaxLevel": str(max_lvl),
         "AiPlayerbot.RandomBotMaps": exp_maps,
-        "AiPlayerbot.SyncLevelWithPlayers": "0"
+        "AiPlayerbot.SyncLevelWithPlayers": "0",
+        "AiPlayerbot.RandomBotFixedLevel": fixed_level
     })
 
     ConfigManager.update_conf_values({
@@ -1152,8 +1158,10 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
         "IndividualProgression.BotAccountsMaxLevel": str(max_lvl)
     }, conf_path=IP_CONF_FILE)
 
+    fixed_desc = "Enabled [AiPlayerbot.RandomBotFixedLevel = 1, bots locked to bracket range]" if fixed_level == "1" else "Disabled [AiPlayerbot.RandomBotFixedLevel = 0, bots level up naturally]"
     print(f"\nSkirmish configuration saved!")
     print(f"Level Range       : {min_lvl} - {max_lvl}")
+    print(f"Fixed Bot Level   : {fixed_desc}")
     print(f"LevelSync         : Disabled [Bots stay at {min_lvl}-{max_lvl} even for Level 1 players]")
     print(f"IP Starting Stage : {ip_start}")
     print(f"IP Progression Lim: {ip_limit if ip_limit != '0' else '0 (Unlimited WotLK)'}\n")
@@ -1182,12 +1190,12 @@ def skirmish_preset_action(min_lvl: int, max_lvl: int):
 
 
 def rpg_weight_preset_action(preset_name: str, weights: dict):
-    print(f"\nConfiguring Open World RPG Activity Weights: {preset_name}...")
+    print(f"\nConfiguring Open World PvP & World Activity Weights: {preset_name}...")
     conf_updates = {f"AiPlayerbot.RpgStatusProbWeight.{k}": str(v) for k, v in weights.items()}
     if ConfigManager.update_conf_values(conf_updates):
         DockerService.reload_worldserver_config()
         print("\n=====================================================")
-        print(f" SUCCESS: Open World RPG Activity set to '{preset_name}'")
+        print(f" SUCCESS: Open World PvP & World Activity set to '{preset_name}'")
         print("=====================================================")
         print(" Active Behavior Weights:")
         for k, v in weights.items():
@@ -1559,28 +1567,14 @@ def create_application_menus() -> BaseMenu:
     server_menu.add_option(ActionOption("8", "Wipe Server Setup", "Delete all containers, database volumes, & images (requires rebuild)", wipe_server_action))
     main_menu.add_option(SubMenuOption("1", "Server Controls", "Start, stop, build, logs, and account setup", server_menu))
 
-
-    # 2. Skirmish Mode SubMenu
-    skirmish_menu = BaseMenu("SKIRMISH MODE SETUP [PVP BRACKETS]", parent=main_menu)
-    skirmish_menu.add_option(ActionOption("1", "Bracket 19", "[Level 10 - 19]", lambda ctx: skirmish_preset_action(10, 19)))
-    skirmish_menu.add_option(ActionOption("2", "Bracket 29", "[Level 20 - 29]", lambda ctx: skirmish_preset_action(20, 29)))
-    skirmish_menu.add_option(ActionOption("3", "Bracket 39", "[Level 30 - 39]", lambda ctx: skirmish_preset_action(30, 39)))
-    skirmish_menu.add_option(ActionOption("4", "Bracket 49", "[Level 40 - 49]", lambda ctx: skirmish_preset_action(40, 49)))
-    skirmish_menu.add_option(ActionOption("5", "Bracket 59", "[Level 50 - 59]", lambda ctx: skirmish_preset_action(50, 59)))
-    skirmish_menu.add_option(ActionOption("6", "Classic 60", "[Level 60 - 60]", lambda ctx: skirmish_preset_action(60, 60)))
-    skirmish_menu.add_option(ActionOption("7", "TBC 70", "[Level 60 - 70]", lambda ctx: skirmish_preset_action(60, 70)))
-    skirmish_menu.add_option(ActionOption("8", "WotLK 80", "[Level 70 - 80]", lambda ctx: skirmish_preset_action(70, 80)))
-    skirmish_menu.add_option(ActionOption("9", "Custom Level Range", "[e.g. 30 - 40]", custom_skirmish_action))
-    main_menu.add_option(SubMenuOption("2", "Skirmish Mode [Quick PvP]", "Jump into PvP at a set level range", skirmish_menu))
-
-    # 3. Expansion Setup SubMenu
+    # 2. Expansion Setup SubMenu
     exp_menu = BaseMenu("EXPANSION PROGRESSION CONTROL", parent=main_menu)
     exp_menu.add_option(ActionOption("1", "Classic WoW", "[Level 1-60  | Eastern Kingdoms & Kalimdor]", lambda ctx: expansion_preset_action("Classic Mode", 60, "0,1")))
     exp_menu.add_option(ActionOption("2", "TBC Mode", "[Level 1-70  | Unlocks Outland]", lambda ctx: expansion_preset_action("TBC Mode", 70, "0,1,530")))
     exp_menu.add_option(ActionOption("3", "WotLK Mode", "[Level 1-80  | Unlocks Northrend]", lambda ctx: expansion_preset_action("WotLK Mode", 80, "0,1,530,571")))
-    main_menu.add_option(SubMenuOption("3", "Expansion Setup", "Choose which expansion bots play in", exp_menu))
+    main_menu.add_option(SubMenuOption("2", "Expansion Setup", "Choose which expansion bots play in", exp_menu))
 
-    # 4. Bot Management & Population SubMenu
+    # 3. Bot Management & Population SubMenu
     bot_menu = BaseMenu("BOT MANAGEMENT & POPULATION", parent=main_menu)
 
     pop_menu = BaseMenu("BOT POPULATION DENSITY SETUP", parent=bot_menu)
@@ -1589,24 +1583,34 @@ def create_application_menus() -> BaseMenu:
     pop_menu.add_option(ActionOption("3", "High (Default)", "[1000 - 2000 Bots] [Default - active world population & PvP]", lambda ctx: bot_population_preset_action("High", 1000, 2000)))
     pop_menu.add_option(ActionOption("4", "Custom Bot Count", "[Specify exact min/max bot population]", custom_population_action))
 
-    rpg_menu = BaseMenu("OPEN WORLD RPG ACTIVITY PRESETS", parent=bot_menu)
-    rpg_menu.add_option(ActionOption("1", "Balanced RPG (Default)", "Balanced mix of Questing, Grinding, Flight Traveling, & World PvP", lambda ctx: rpg_weight_preset_action("Balanced RPG", {"WanderRandom": 15, "WanderNpc": 20, "GoGrind": 15, "GoCamp": 10, "DoQuest": 60, "TravelFlight": 15, "Rest": 5, "OutdoorPvp": 15})))
+    skirmish_menu = BaseMenu("SKIRMISH MODE SETUP [PVP BRACKETS]", parent=bot_menu)
+    skirmish_menu.add_option(ActionOption("1", "Bracket 10-20", "[Level 10 - 20  | Locked Bot Level]", lambda ctx: skirmish_preset_action(10, 20)))
+    skirmish_menu.add_option(ActionOption("2", "Bracket 20-30", "[Level 20 - 30  | Locked Bot Level]", lambda ctx: skirmish_preset_action(20, 30)))
+    skirmish_menu.add_option(ActionOption("3", "Bracket 30-40", "[Level 30 - 40  | Locked Bot Level]", lambda ctx: skirmish_preset_action(30, 40)))
+    skirmish_menu.add_option(ActionOption("4", "Bracket 40-50", "[Level 40 - 50  | Locked Bot Level]", lambda ctx: skirmish_preset_action(40, 50)))
+    skirmish_menu.add_option(ActionOption("5", "Bracket 50-60", "[Level 50 - 60  | Locked Bot Level]", lambda ctx: skirmish_preset_action(50, 60)))
+    skirmish_menu.add_option(ActionOption("6", "Bracket 60-70", "[Level 60 - 70  | Unlocks Outland  | Locked Bot Level]", lambda ctx: skirmish_preset_action(60, 70)))
+    skirmish_menu.add_option(ActionOption("7", "Bracket 70-80", "[Level 70 - 80  | Unlocks Northrend | Locked Bot Level]", lambda ctx: skirmish_preset_action(70, 80)))
+    skirmish_menu.add_option(ActionOption("8", "Custom Level Range", "[e.g. 30 - 40 or 1 - 60]", custom_skirmish_action))
+
+    rpg_menu = BaseMenu("OPEN WORLD PVP & WORLD ACTIVITY PRESETS", parent=bot_menu)
+    rpg_menu.add_option(ActionOption("1", "Balanced PvP & World Activity (Default)", "Balanced mix of Questing, Grinding, Flight Traveling, & World PvP", lambda ctx: rpg_weight_preset_action("Balanced World Activity", {"WanderRandom": 15, "WanderNpc": 20, "GoGrind": 15, "GoCamp": 10, "DoQuest": 60, "TravelFlight": 15, "Rest": 5, "OutdoorPvp": 15})))
     rpg_menu.add_option(ActionOption("2", "Heavy Questers & Explorers", "Bots focus heavily on quest lines, flight paths, and exploring hubs", lambda ctx: rpg_weight_preset_action("Heavy Questers", {"WanderRandom": 10, "WanderNpc": 30, "GoGrind": 10, "GoCamp": 10, "DoQuest": 90, "TravelFlight": 40, "Rest": 5, "OutdoorPvp": 10})))
     rpg_menu.add_option(ActionOption("3", "Grinders & Mob Hunters", "Bots roam hunting grounds and continuously grind mobs in the open world", lambda ctx: rpg_weight_preset_action("Grinders & Mob Hunters", {"WanderRandom": 40, "WanderNpc": 10, "GoGrind": 80, "GoCamp": 5, "DoQuest": 20, "TravelFlight": 15, "Rest": 5, "OutdoorPvp": 20})))
     rpg_menu.add_option(ActionOption("4", "World PvP Skirmishers", "Bots actively patrol open-world zones, objectives, and fight opposite faction", lambda ctx: rpg_weight_preset_action("World PvP Skirmishers", {"WanderRandom": 35, "WanderNpc": 10, "GoGrind": 25, "GoCamp": 10, "DoQuest": 30, "TravelFlight": 25, "Rest": 5, "OutdoorPvp": 80})))
     rpg_menu.add_option(ActionOption("5", "Town Idlers & Socializers", "Bots hang around camps, inns, towns, resting and interacting with NPCs", lambda ctx: rpg_weight_preset_action("Town Idlers", {"WanderRandom": 15, "WanderNpc": 50, "GoGrind": 10, "GoCamp": 40, "DoQuest": 30, "TravelFlight": 15, "Rest": 35, "OutdoorPvp": 5})))
 
     bot_menu.add_option(SubMenuOption("1", "Adjust Bot Population Density", "Set bot counts based on performance impact", pop_menu))
-    bot_menu.add_option(SubMenuOption("2", "Open World RPG Activity Presets", "Tune bot open world behaviors (Questing, Grinding, PvP, Idling)", rpg_menu))
-    bot_menu.add_option(ActionOption("3", "Bot Starting Level Mode", "Set bot spawn behavior (Force Level 1 vs Random levels)", bot_starting_level_action))
-    bot_menu.add_option(ActionOption("4", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action,
+    bot_menu.add_option(SubMenuOption("2", "Skirmish Mode [Quick PvP]", "Jump into PvP at a set level range", skirmish_menu))
+    bot_menu.add_option(SubMenuOption("3", "Open World PvP & World Activity Presets", "Tune bot open world behaviors and PvP activity (Questing, Grinding, PvP, Idling)", rpg_menu))
+    bot_menu.add_option(ActionOption("4", "Bot Starting Level Mode", "Set bot spawn behavior (Force Level 1 vs Random levels)", bot_starting_level_action))
+    bot_menu.add_option(ActionOption("5", "Reset & Purge Playerbots", "Wipe current bots and spawn fresh population", purge_bots_action,
                                      requires_server="online"))
-    bot_menu.add_option(ActionOption("5", "Auction House Bot Setup", "Optionally enable or configure AH Bot character/GUID", ahbot_setup_action))
-    main_menu.add_option(SubMenuOption("4", "Bot Management & Population", "Reset bots, adjust population, or set open world RPG activity", bot_menu))
+    bot_menu.add_option(ActionOption("6", "Auction House Bot Setup", "Optionally enable or configure AH Bot character/GUID", ahbot_setup_action))
+    main_menu.add_option(SubMenuOption("3", "Bot Management & Population", "Adjust population, set skirmish brackets, tune PvP & world activity, or reset bots", bot_menu))
 
-
-    # 5. Multi-Player Setup
-    main_menu.add_option(ActionOption("5", "Multi-Player Setup", "Let friends join", coop_action))
+    # 4. Multi-Player Setup
+    main_menu.add_option(ActionOption("4", "Multi-Player Setup", "Let friends join", coop_action))
 
     return main_menu
 

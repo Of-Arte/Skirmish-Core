@@ -195,8 +195,16 @@ def test_start_server_action_rejects_flow_when_images_unbuilt(monkeypatch):
 
     # When user enters 'y' to build prompt, verify DockerService.build_images is called
     build_called = []
+    def fake_run(cmd, **kwargs):
+        class DummyCompleted:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+        return DummyCompleted()
+
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run)
     monkeypatch.setattr(menu_mod.DockerService, "build_images", lambda: build_called.append(True) or True)
-    inputs2 = iter(["y", "y"])
+    inputs2 = iter(["y", "y", "n"])
     monkeypatch.setattr(menu_mod, "safe_input", lambda prompt="": next(inputs2, ""))
 
     menu_mod.start_server_action({})
@@ -232,28 +240,28 @@ def test_docker_service_are_images_built_check(monkeypatch):
 
 def test_skirmish_menu_back():
     """Verify navigation into Skirmish menu and returning via 0."""
-    stdout, stderr, code = run_menu_py_with_inputs(["2", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "0", "0", "0"])
     assert code == 0
     assert "SKIRMISH MODE SETUP" in stdout
 
 
 def test_expansion_menu_back():
     """Verify navigation into Expansion Setup menu and returning via 0."""
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["2", "0", "0"])
     assert code == 0
     assert "EXPANSION PROGRESSION CONTROL" in stdout
 
 
 def test_bot_management_menu_back():
     """Verify navigation into Bot Management menu and returning via 0."""
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "0", "0"])
     assert code == 0
     assert "BOT MANAGEMENT & POPULATION" in stdout
 
 
 def test_bot_population_submenu_back():
     """Verify navigation into Bot Population Density setup and returning."""
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "0", "0", "0"])
     assert code == 0
     assert "BOT POPULATION DENSITY SETUP" in stdout
 
@@ -261,7 +269,7 @@ def test_bot_population_submenu_back():
 def test_bot_population_presets_config_mutation():
     """Verify Low, Medium, High bot population choices write correct Min/Max values to playerbots.conf."""
     # Test Low Preset [100-300]
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "1", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "1", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Low [100-300]" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -270,7 +278,7 @@ def test_bot_population_presets_config_mutation():
         assert "AiPlayerbot.MaxRandomBots = 300" in content
 
     # Test High Preset [1000-2000]
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "3", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "3", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to High [1000-2000]" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -279,7 +287,7 @@ def test_bot_population_presets_config_mutation():
         assert "AiPlayerbot.MaxRandomBots = 2000" in content
 
     # Reset to Medium Preset [500-1000]
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "2", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "2", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Medium [500-1000]" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -289,30 +297,30 @@ def test_bot_population_presets_config_mutation():
 
 
 def test_rpg_weight_preset_config_mutation():
-    """Verify Open World RPG presets update RpgStatusProbWeight values in playerbots.conf."""
+    """Verify Open World PvP & World Activity presets update RpgStatusProbWeight values in playerbots.conf."""
     # Test World PvP Skirmishers
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "2", "4", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "4", "", "0", "0", "0"])
     assert code == 0
-    assert "SUCCESS: Open World RPG Activity set to 'World PvP Skirmishers'" in stdout
+    assert "SUCCESS: Open World PvP & World Activity set to 'World PvP Skirmishers'" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.RpgStatusProbWeight.OutdoorPvp = 80" in content
 
-    # Test Balanced RPG
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "2", "1", "", "0", "0", "0"])
+    # Test Balanced World Activity
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "1", "", "0", "0", "0"])
     assert code == 0
-    assert "SUCCESS: Open World RPG Activity set to 'Balanced RPG'" in stdout
+    assert "SUCCESS: Open World PvP & World Activity set to 'Balanced World Activity'" in stdout
 
     # Test Town Idlers
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "2", "5", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "5", "", "0", "0", "0"])
     assert code == 0
-    assert "SUCCESS: Open World RPG Activity set to 'Town Idlers'" in stdout
+    assert "SUCCESS: Open World PvP & World Activity set to 'Town Idlers'" in stdout
 
 
 def test_expansion_mode_config_mutation():
     """Verify Expansion Setup options update playerbots.conf and individualProgression.conf."""
     # Classic Mode
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["2", "1", "n", "", "0", "0", "0"])
     assert code == 0
     assert "Configuring Classic Mode" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -320,6 +328,7 @@ def test_expansion_mode_config_mutation():
         assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 60" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 0" in ip_content
@@ -327,7 +336,7 @@ def test_expansion_mode_config_mutation():
         assert "IndividualProgression.BotAccountsMaxLevel = 60" in ip_content
 
     # TBC Mode
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["2", "2", "n", "", "0", "0", "0"])
     assert code == 0
     assert "Configuring TBC Mode" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -335,6 +344,7 @@ def test_expansion_mode_config_mutation():
         assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 70" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1,530" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 8" in ip_content
@@ -342,7 +352,7 @@ def test_expansion_mode_config_mutation():
         assert "IndividualProgression.BotAccountsMaxLevel = 70" in ip_content
 
     # WotLK Mode
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "3", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["2", "3", "n", "", "0", "0", "0"])
     assert code == 0
     assert "Configuring WotLK Mode" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -350,6 +360,7 @@ def test_expansion_mode_config_mutation():
         assert "AiPlayerbot.RandomBotMinLevel = 1" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 80" in content
         assert "AiPlayerbot.RandomBotMaps = 0,1,530,571" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 13" in ip_content
@@ -359,23 +370,24 @@ def test_expansion_mode_config_mutation():
 
 def test_skirmish_bracket_config_mutation():
     """Verify Skirmish Mode sets correct Min/Max level ranges and maps in playerbots.conf and individualProgression.conf."""
-    stdout, stderr, code = run_menu_py_with_inputs(["2", "1", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "1", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SKIRMISH MODE ACTIVE" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.RandomBotMinLevel = 10" in content
-        assert "AiPlayerbot.RandomBotMaxLevel = 19" in content
+        assert "AiPlayerbot.RandomBotMaxLevel = 20" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 1" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 0" in ip_content
         assert "IndividualProgression.ProgressionLimit = 7" in ip_content
-        assert "IndividualProgression.BotAccountsMaxLevel = 19" in ip_content
+        assert "IndividualProgression.BotAccountsMaxLevel = 20" in ip_content
 
 
 def test_custom_skirmish_action_executes_preset():
     """Verify custom skirmish level range invokes skirmish_preset_action and updates config."""
-    stdout, stderr, code = run_menu_py_with_inputs(["2", "9", "35", "45", "n", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "8", "35", "45", "n", "", "0", "0", "0"])
     assert code == 0
     assert "Applying Skirmish Config: Level Range [35 - 45]" in stdout
     assert "SKIRMISH MODE ACTIVE: Level 35-45 PvP Battles" in stdout
@@ -383,6 +395,7 @@ def test_custom_skirmish_action_executes_preset():
         content = f.read()
         assert "AiPlayerbot.RandomBotMinLevel = 35" in content
         assert "AiPlayerbot.RandomBotMaxLevel = 45" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 1" in content
     with open(IP_CONF_FILE, "r", encoding="utf-8") as f:
         ip_content = f.read()
         assert "IndividualProgression.StartingProgression = 0" in ip_content
@@ -390,9 +403,21 @@ def test_custom_skirmish_action_executes_preset():
         assert "IndividualProgression.BotAccountsMaxLevel = 45" in ip_content
 
 
+def test_custom_skirmish_action_level_1_sets_fixed_level_zero():
+    """Verify custom range starting at Level 1 sets RandomBotFixedLevel = 0 for natural leveling."""
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "8", "1", "60", "n", "", "0", "0", "0"])
+    assert code == 0
+    assert "Applying Skirmish Config: Level Range [1 - 60]" in stdout
+    with open(CONF_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+        assert "AiPlayerbot.RandomBotMinLevel = 1" in content
+        assert "AiPlayerbot.RandomBotMaxLevel = 60" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 0" in content
+
+
 def test_skirmish_custom_range_validation():
     """Verify custom skirmish level range validation catches Min > Max errors."""
-    stdout, stderr, code = run_menu_py_with_inputs(["2", "9", "50", "20", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "2", "8", "50", "20", "", "0", "0", "0"])
     assert code == 0
     assert "Invalid input: Minimum level cannot be greater than maximum level." in stdout
 
@@ -400,17 +425,17 @@ def test_skirmish_custom_range_validation():
 def test_custom_population_input_validation():
     """Verify custom bot population density validates non-integers and Min > Max bounds."""
     # Invalid integer
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "4", "abc", "200", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "4", "abc", "200", "", "0", "0", "0"])
     assert code == 0
     assert "Invalid input: Bot count must be a positive integer." in stdout
 
     # Min > Max
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "4", "1500", "500", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "4", "1500", "500", "", "0", "0", "0"])
     assert code == 0
     assert "Invalid input: Minimum bot count cannot be greater than maximum bot count." in stdout
 
     # Valid custom population [450-850]
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "1", "4", "450", "850", "n", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "4", "450", "850", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Custom [450-850]" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -422,17 +447,17 @@ def test_custom_population_input_validation():
 def test_coop_action_handling():
     """Verify Multi-Player Setup handles cancel, invalid format, and offline prompts."""
     # Cancel input 'c'
-    stdout, stderr, code = run_menu_py_with_inputs(["5", "c", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "c", "0"])
     assert code == 0
     assert "Address update canceled." in stdout
 
     # Invalid address format
-    stdout, stderr, code = run_menu_py_with_inputs(["5", "invalid ip address!", "", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "invalid ip address!", "", "0"])
     assert code == 0
     assert "Invalid input: Address must be a valid IP address or hostname." in stdout
 
     # Valid IP format while offline (user declines starting server)
-    stdout, stderr, code = run_menu_py_with_inputs(["5", "192.168.1.100", "n", "", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "192.168.1.100", "n", "", "0"])
     assert code == 0
     assert "Database container is currently OFFLINE" in stdout
     assert "Address update canceled." in stdout
@@ -494,7 +519,7 @@ def test_linux_admin_console_and_logs_compatibility(monkeypatch):
 
 def test_bot_starting_level_mode_config_mutation():
     """Verify Bot Starting Level Mode toggles DisableRandomLevels in playerbots.conf."""
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "3", "1", "n", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "4", "1", "n", "", "0", "0"])
     assert code == 0
     assert "SUCCESS: Forced Level 1 Bot Spawns Enabled!" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -502,7 +527,7 @@ def test_bot_starting_level_mode_config_mutation():
         assert "AiPlayerbot.DisableRandomLevels = 1" in content
         assert "AiPlayerbot.RandombotStartingLevel = 1" in content
 
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "3", "2", "n", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "4", "2", "n", "", "0", "0"])
     assert code == 0
     assert "SUCCESS: Random Level Bot Spawns Enabled!" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
@@ -519,7 +544,7 @@ def test_ahbot_setup_menu():
     menu_mod.ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": "0"}, conf_path=ahbot_conf)
 
     # Test wizard prompt when server stack is offline
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "1", "n", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "1", "n", "0", "0"])
     assert code == 0
     assert "INTERACTIVE AH BOT SETUP WIZARD" in stdout
     assert "SkirmishCore server stack is currently OFFLINE" in stdout
@@ -528,7 +553,7 @@ def test_ahbot_setup_menu():
     menu_mod.ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": "0"}, conf_path=ahbot_conf)
 
     # Test option 2 with invalid non-numeric GUID
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "2", "y", "invalid_guid", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "2", "y", "invalid_guid", "", "0", "0"])
     assert code == 0
     assert "Invalid input: GUID must be a positive integer." in stdout
 
@@ -536,7 +561,7 @@ def test_ahbot_setup_menu():
     menu_mod.ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": "0"}, conf_path=ahbot_conf)
 
     # Test option 2 (Enable AH Bot with manual GUID 55)
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "2", "y", "55", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "2", "y", "55", "", "0", "0"])
     assert code == 0
     assert "SUCCESS: AH Bot Enabled! (Character GUID: 55)" in stdout
 
@@ -544,12 +569,12 @@ def test_ahbot_setup_menu():
         assert "AuctionHouseBot.GUIDs = 55" in f.read()
 
     # Test option 3 (Disable AH Bot)
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "3", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "3", "", "0", "0"])
     assert code == 0
     assert "SUCCESS: AH Bot Disabled!" in stdout
 
     # Test option 4 (View Characters when offline)
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "4", "", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "6", "4", "", "0", "0"])
     assert code == 0
     assert "No characters found in database" in stdout
 
@@ -596,7 +621,7 @@ def test_server_online_annotations_shown_when_server_running(monkeypatch):
 
 def test_purge_bots_annotation_shown_when_server_down():
     """Verify Reset & Purge Playerbots shows [SERVER OFFLINE] in Bot Management menu when server is offline."""
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "0", "0"])
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "0", "0"])
     assert code == 0
     assert "Reset & Purge Playerbots [SERVER OFFLINE]" in stdout
 
@@ -617,8 +642,8 @@ def test_requires_server_attribute_on_options():
     assert console_opt.requires_server == "online", "Admin Console should require server online"
     assert build_opt.requires_server is None, "Build Server should have no server requirement"
 
-    bot_menu = menu.options[3].sub_menu
-    purge_opt = next(o for o in bot_menu.options if o.key == "4")
+    bot_menu = menu.options[2].sub_menu
+    purge_opt = next(o for o in bot_menu.options if o.key == "5")
     assert purge_opt.requires_server == "online", "Reset & Purge Playerbots should require server online"
 
 

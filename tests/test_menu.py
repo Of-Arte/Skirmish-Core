@@ -77,25 +77,25 @@ def test_server_controls_menu_back():
 
 def test_skirmish_menu_back():
     """Verify navigation into Skirmish menu and returning via 0."""
-    stdout, stderr, code = run_menu_with_inputs(["2", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "2", "0", "0", "0"])
     assert code == 0
     assert "SKIRMISH MODE SETUP" in stdout
 
 def test_expansion_menu_back():
     """Verify navigation into Expansion Setup menu and returning via 0."""
-    stdout, stderr, code = run_menu_with_inputs(["3", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["2", "0", "0"])
     assert code == 0
     assert "EXPANSION PROGRESSION CONTROL" in stdout
 
 def test_bot_management_menu_back():
     """Verify navigation into Bot Management & Population menu and returning via 0."""
-    stdout, stderr, code = run_menu_with_inputs(["4", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "0", "0"])
     assert code == 0
     assert "BOT MANAGEMENT & POPULATION" in stdout
 
 def test_bot_population_submenu_back():
     """Verify navigation into Bot Population Density setup and returning to bot menu and then main menu."""
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "0", "0", "0"])
     assert code == 0
     assert "BOT POPULATION DENSITY SETUP" in stdout
 
@@ -104,7 +104,7 @@ def test_bot_population_presets_config_mutation():
     conf_path = CONF_FILE
     
     # Test Low Preset [100-300]
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "1", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "1", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Low [100-300]" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
@@ -113,7 +113,7 @@ def test_bot_population_presets_config_mutation():
         assert "AiPlayerbot.MaxRandomBots = 300" in content
 
     # Test High Preset [1000-2000]
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "3", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "3", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to High [1000-2000]" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
@@ -122,7 +122,7 @@ def test_bot_population_presets_config_mutation():
         assert "AiPlayerbot.MaxRandomBots = 2000" in content
 
     # Reset to Medium Preset [500-1000]
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "2", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "2", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Medium [500-1000]" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
@@ -132,11 +132,11 @@ def test_bot_population_presets_config_mutation():
 
 
 def test_rpg_weight_preset_config_mutation():
-    """Verify Open World RPG presets update RpgStatusProbWeight values in playerbots.conf."""
+    """Verify Open World PvP & World Activity presets update RpgStatusProbWeight values in playerbots.conf."""
     conf_path = CONF_FILE
-    stdout, stderr, code = run_menu_with_inputs(["4", "2", "4", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "3", "4", "", "0", "0", "0"])
     assert code == 0
-    assert "SUCCESS: Open World RPG Activity set to 'World PvP Skirmishers'" in stdout
+    assert "SUCCESS: Open World PvP & World Activity set to 'World PvP Skirmishers'" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.RpgStatusProbWeight.OutdoorPvp = 80" in content
@@ -146,8 +146,8 @@ def test_expansion_mode_config_mutation():
     """Verify Expansion Setup options update playerbots.conf RandomBotMaxLevel and RandomBotMaps."""
     conf_path = CONF_FILE
 
-    # Test Classic Mode [Max level 60, Maps 0,1] (Choice 3 -> Choice 1 -> Pause -> Choice 0 [exp] -> Choice 0 [main])
-    stdout, stderr, code = run_menu_with_inputs(["3", "1", "", "0", "0", "0"])
+    # Test Classic Mode [Max level 60, Maps 0,1]
+    stdout, stderr, code = run_menu_with_inputs(["2", "1", "n", "", "0", "0", "0"])
     assert code == 0
     assert "Configuring Classic Mode" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
@@ -159,18 +159,19 @@ def test_skirmish_bracket_config_mutation():
     """Verify Skirmish Mode sets correct Min/Max level ranges and maps in playerbots.conf."""
     conf_path = CONF_FILE
 
-    # Test Twink 19 Bracket (Min 10, Max 19) (Choice 2 -> Choice 1 -> Purge Prompt n -> Pause -> Choice 0 [skirmish] -> Choice 0 [main])
-    stdout, stderr, code = run_menu_with_inputs(["2", "1", "n", "", "0", "0", "0"])
+    # Test Bracket 10-20 (Min 10, Max 20)
+    stdout, stderr, code = run_menu_with_inputs(["3", "2", "1", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SKIRMISH MODE ACTIVE" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.RandomBotMinLevel = 10" in content
-        assert "AiPlayerbot.RandomBotMaxLevel = 19" in content
+        assert "AiPlayerbot.RandomBotMaxLevel = 20" in content
+        assert "AiPlayerbot.RandomBotFixedLevel = 1" in content
 
 def test_skirmish_custom_range_validation():
     """Verify custom skirmish level range validation catches Min > Max errors."""
-    stdout, stderr, code = run_menu_with_inputs(["2", "9", "50", "20", "", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "2", "8", "50", "20", "", "0", "0", "0"])
     assert code == 0
     assert "Invalid input: Minimum level cannot be greater than maximum level." in stdout
 
@@ -180,17 +181,17 @@ def test_custom_population_input_validation():
     conf_path = CONF_FILE
 
     # Invalid integer
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "4", "abc", "200", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "4", "abc", "200", "", "0", "0", "0"])
     assert code == 0
     assert "Invalid input: Bot count must be a positive integer." in stdout
 
     # Min > Max
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "4", "1500", "500", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "4", "1500", "500", "", "0", "0", "0"])
     assert code == 0
     assert "Invalid input: Minimum bot count cannot be greater than maximum bot count." in stdout
 
     # Valid custom population [450-850]
-    stdout, stderr, code = run_menu_with_inputs(["4", "1", "4", "450", "850", "", "0", "0", "0"])
+    stdout, stderr, code = run_menu_with_inputs(["3", "1", "4", "450", "850", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Custom [450-850]" in stdout
     with open(conf_path, "r", encoding="utf-8") as f:
