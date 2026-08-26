@@ -80,13 +80,43 @@ def test_server_controls_menu_back():
     assert "SERVER CONTROLS & ADMIN" in stdout
 
 
+def test_create_account_action_wizard():
+    """Verify Automated Account Creation Wizard creates account with selected GM status."""
+    # Option 1 (Server Controls) -> Option 3 (Create Game Account Wizard) -> Username 'testgm', Password 'pass123', GM level '3' (Admin) -> 'n' (Don't start server) -> Enter (pause_after) -> 0 (Back) -> 0 (Exit)
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "3", "testgm", "pass123", "3", "n", "", "0", "0"])
+    assert code == 0
+    assert "AUTOMATED ACCOUNT CREATION WIZARD" in stdout
+    assert "SUCCESS: Account 'testgm' configured successfully!" in stdout
+    assert "Username  : testgm" in stdout
+    assert "GM Status : Admin (Level 3)" in stdout
+
+
+
 def test_health_check_option():
-    """Verify Option 1 -> Option 5 executes HealthChecker diagnostics."""
-    stdout, stderr, code = run_menu_py_with_inputs(["1", "5", "0", "0"])
+    """Verify Option 1 -> Option 6 executes HealthChecker diagnostics."""
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "6", "0", "0"])
     assert code == 0
     assert "SKIRMISHCORE COMPREHENSIVE HEALTH CHECK" in stdout
     assert "System & Python Environment" in stdout
     assert "HEALTH CHECK RESULT" in stdout
+
+
+def test_wipe_server_action_cancel():
+    """Verify entering anything other than 'delete' cancels wiping the server."""
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "7", "no", "", "0", "0"])
+    assert code == 0
+    assert "WARNING: WIPE & DELETE SERVER SETUP" in stdout
+    assert "Wipe canceled. Confirmation did not match 'delete'." in stdout
+
+
+def test_wipe_server_action_confirm():
+    """Verify typing 'delete' triggers DockerService.wipe_stack()."""
+    stdout, stderr, code = run_menu_py_with_inputs(["1", "7", "delete", "", "0", "0"])
+    assert code == 0
+    assert "WARNING: WIPE & DELETE SERVER SETUP" in stdout
+    assert "Wiping SkirmishCore Docker stack, volumes, and images..." in stdout
+
+
 
 
 def test_skirmish_menu_back():

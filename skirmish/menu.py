@@ -457,6 +457,25 @@ class DockerService:
             return False
 
     @staticmethod
+    def wipe_stack() -> bool:
+        """Deletes all Docker containers, images, volumes, and network setup requiring a full rebuild."""
+        print("\nWiping SkirmishCore Docker stack, volumes, and images...")
+        try:
+            res = subprocess.run(["docker", "compose", "down", "-v", "--rmi", "all", "--remove-orphans"], cwd=CORE_DIR)
+            if res.returncode == 0:
+                print("\nSkirmishCore Docker stack wiped successfully.")
+                print("[NOTE] All containers, database volumes, and images have been deleted.")
+                print("[NOTE] Next start will require a full rebuild.")
+                return True
+            else:
+                print("\nError: Failed to wipe Docker stack.")
+                return False
+        except Exception as e:
+            print(f"Error wiping Docker stack: {e}")
+            return False
+
+
+    @staticmethod
     def ensure_submodules() -> bool:
         """Ensures git submodules in modules/ are initialized and populated."""
         if shutil.which("git") and os.path.exists(os.path.join(CORE_DIR, ".gitmodules")):
@@ -609,6 +628,150 @@ def stop_server_action(context: dict):
         return
 
     DockerService.stop_stack()
+
+
+def wipe_server_action(context: dict):
+    print("\n=====================================================")
+    print("        WARNING: WIPE & DELETE SERVER SETUP")
+    print("=====================================================")
+    print(" This action will PERMANENTLY DELETE:")
+    print("   - All Docker containers and networks")
+    print("   - All database volumes & player data (ac-database)")
+    print("   - All built Docker images (requiring a complete rebuild)")
+    print("=====================================================")
+    confirm = safe_input("\nTo confirm wiping the server, type 'delete': ").strip()
+    if confirm.lower() != 'delete':
+        print("Wipe canceled. Confirmation did not match 'delete'.")
+        return
+
+    DockerService.wipe_stack()
+
+
+
+def create_account_action(context: dict):
+    print("\n=====================================================")
+    print("        AUTOMATED ACCOUNT CREATION WIZARD")
+    print("=====================================================")
+    print("Create a WoW account without needing to access the")
+    print("worldserver terminal console manually.")
+    print("-----------------------------------------------------")
+
+    user = safe_input("\nEnter account username: ").strip()
+    if not user:
+        print("\n[!] Account creation canceled: Username cannot be empty.")
+        return
+
+    password = safe_input(f"Enter password for '{user}': ").strip()
+    if not password:
+        print("\n[!] Account creation canceled: Password cannot be empty.")
+        return
+
+    print("\nSelect GM Rank / Permissions level:")
+    print("  0. Player      [Standard player, no GM powers]")
+    print("  1. Moderator   [Basic GM commands & moderation]")
+    print("  2. GameMaster  [Full GM commands, teleports, spawning]")
+    print("  3. Admin       [Administrator - Full server control] (Default)")
+
+    gm_choice = safe_input("\nSelect GM level [0-3, default 3]: ").strip()
+    if gm_choice == "":
+        gm_level = 3
+    elif gm_choice in ("0", "1", "2", "3"):
+        gm_level = int(gm_choice)
+    else:
+        print("\nInvalid GM rank choice. Defaulting to 3 (Admin).")
+        gm_level = 3
+
+    rank_names = {
+        0: "Player (Level 0)",
+        1: "Moderator (Level 1)",
+        2: "GameMaster (Level 2)",
+        3: "Admin (Level 3)"
+    }
+    rank_str = rank_names.get(gm_level, f"Level {gm_level}")
+
+    ws_online = DockerService.get_container_status("ac-worldserver") == "ONLINE"
+    db_online = DockerService.get_container_status("ac-database") == "ONLINE"
+
+    if not ws_online and not db_online:
+        print("\n[!] NOTE: Server stack is currently OFFLINE.")
+        start_now = safe_input("Would you like to start the server stack now to create this account? [y/N]: ").strip().lower()
+        if start_now == 'y':
+            if DockerService.start_stack():
+                print("\nWaiting 10 seconds for server initialization...")
+                time.sleep(10)
+                ws_online = DockerService.get_container_status("ac-worldserver") == "ONLINE"
+                db_online = DockerService.get_container_status("ac-database") == "ONLINE"
+
+    print(f"\nConfiguring account '{user}' with status {rank_str}...", flush=True)
+    account_created = False
+    gm_applied = False
+
+    if ws_online:
+        try:
+            res = subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-worldserver", "bash", "-c", f"echo 'account create {user} {password}' | nc -w 1 127.0.0.1 7878"],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+            )
+            account_created = True
+            if gm_level > 0:
+                subprocess.run(
+                    ["docker", "compose", "exec", "-T", "ac-worldserver", "bash", "-c", f"echo 'account setgm {user} {gm_level} -1' | nc -w 1 127.0.0.1 7878"],
+                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+                )
+                gm_applied = True
+        except Exception as e:
+            print(f"Warning: Worldserver console command error: {e}")
+
+    if db_online:
+        try:
+            res = subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
+                 f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{user}');"],
+                cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+            )
+            acc_id = None
+            if res.returncode == 0 and res.stdout:
+                lines = [l.strip() for l in res.stdout.strip().splitlines() if l.strip()]
+                if len(lines) > 1 and lines[-1].isdigit():
+                    acc_id = lines[-1]
+
+            if not account_created and not acc_id:
+                subprocess.run(
+                    ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
+                     f"INSERT IGNORE INTO acore_auth.account (username, salt, verifier) VALUES (UPPER('{user}'), UNHEX(''), UNHEX(''));"],
+                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                )
+                account_created = True
+                res = subprocess.run(
+                    ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
+                     f"SELECT id FROM acore_auth.account WHERE UPPER(username) = UPPER('{user}');"],
+                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+                )
+                if res.returncode == 0 and res.stdout:
+                    lines = [l.strip() for l in res.stdout.strip().splitlines() if l.strip()]
+                    if len(lines) > 1 and lines[-1].isdigit():
+                        acc_id = lines[-1]
+
+            if acc_id and gm_level > 0:
+                subprocess.run(
+                    ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
+                     f"REPLACE INTO acore_auth.account_access (id, gmlevel, RealmID) VALUES ({acc_id}, {gm_level}, -1);"],
+                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                )
+                gm_applied = True
+        except Exception as e:
+            print(f"Warning: Database update error: {e}")
+
+    print("\n=====================================================")
+    print(f" SUCCESS: Account '{user}' configured successfully!")
+    print("=====================================================")
+    print(f" Username  : {user}")
+    print(f" Password  : {password}")
+    print(f" GM Status : {rank_str}")
+    if not ws_online and not db_online:
+        print(" [NOTE] Server is offline. Account details will take effect")
+        print("        when the server stack is started!")
+    print("=====================================================")
 
 
 def admin_console_action(context: dict):
@@ -1182,10 +1345,13 @@ def create_application_menus() -> BaseMenu:
     server_menu = BaseMenu("SERVER CONTROLS & ADMIN", parent=main_menu)
     server_menu.add_option(ActionOption("1", "Start Server", "Turn it on", start_server_action))
     server_menu.add_option(ActionOption("2", "Stop Server", "Turn it off", stop_server_action))
-    server_menu.add_option(ActionOption("3", "Admin Console & Accounts", "Create accounts or run GM commands", admin_console_action, pause_after=False))
-    server_menu.add_option(ActionOption("4", "Live Logs", "See what the server is doing", logs_action, pause_after=False))
-    server_menu.add_option(ActionOption("5", "Health Check", "Make sure everything is running", doctor_action))
+    server_menu.add_option(ActionOption("3", "Create Game Account Wizard", "Automated account creation with GM status selection", create_account_action))
+    server_menu.add_option(ActionOption("4", "Admin Console", "Open interactive worldserver terminal console", admin_console_action, pause_after=False))
+    server_menu.add_option(ActionOption("5", "Live Logs", "See what the server is doing", logs_action, pause_after=False))
+    server_menu.add_option(ActionOption("6", "Health Check", "Make sure everything is running", doctor_action))
+    server_menu.add_option(ActionOption("7", "Wipe Server Setup", "Delete all containers, database volumes, & images (requires rebuild)", wipe_server_action))
     main_menu.add_option(SubMenuOption("1", "Server Controls", "Start, stop, logs, and account setup", server_menu))
+
 
     # 2. Skirmish Mode SubMenu
     skirmish_menu = BaseMenu("SKIRMISH MODE SETUP [PVP BRACKETS]", parent=main_menu)
