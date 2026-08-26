@@ -1056,17 +1056,125 @@ def purge_bots_action(context: dict):
     purge_bots_sequence(context)
 
 
+def delete_excess_bot_accounts(max_bots: int):
+    """Deletes any random bot accounts (and their character data) that exceed the needed count for the new max_bots limit."""
+    if DockerService.get_container_status("ac-database") != "ONLINE":
+        return
+
+    prefix = ConfigManager.get_conf_value("AiPlayerbot.RandomBotAccountPrefix", "rndbot").lower().strip('"' + "'")
+    max_level = int(ConfigManager.get_conf_value("AiPlayerbot.RandomBotMaxLevel", "80"))
+    divisor = 10 if max_level > 70 else 9
+    needed_accounts = (max_bots + divisor - 1) // divisor
+
+    print(f"\n[!] Cleaning up excess bot accounts in the database (keeping {needed_accounts} accounts)...")
+
+    # Query all account IDs and usernames matching the prefix
+    sql_query = f"SELECT id, username FROM acore_auth.account WHERE username LIKE '{sanitize_sql(prefix)}%';"
+    res = subprocess.run(
+        ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-N", "-e", sql_query],
+        cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+    )
+
+    if res.returncode != 0 or not res.stdout:
+        return
+
+    excess_account_ids = []
+    pattern = re.compile(rf"^{re.escape(prefix)}(\d+)$")
+    
+    for line in res.stdout.strip().splitlines():
+        parts = line.split()
+        if len(parts) >= 2:
+            acc_id_str, username = parts[0], parts[1].lower()
+            match = pattern.match(username)
+            if match:
+                acc_num = int(match.group(1))
+                if acc_num >= needed_accounts:
+                    excess_account_ids.append(acc_id_str)
+
+    if not excess_account_ids:
+        print("No excess bot accounts to clean up.")
+        return
+
+    print(f"Removing {len(excess_account_ids)} excess bot accounts and their character records...")
+    ids_str = ",".join(excess_account_ids)
+
+    # We delete characters from these accounts, then clean up orphaned records, then delete the accounts
+    queries = [
+        f"DELETE FROM acore_characters.characters WHERE account IN ({ids_str});",
+        "DELETE FROM acore_characters.arena_team_member WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.arena_team WHERE arenaTeamId NOT IN (SELECT arenaTeamId FROM acore_characters.arena_team_member);",
+        "DELETE FROM acore_characters.character_account_data WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_achievement WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_achievement_progress WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_action WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_arena_stats WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_aura WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_entry_point WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_glyphs WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_homebind WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_inventory WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.item_instance WHERE owner_guid NOT IN (SELECT guid FROM acore_characters.characters) AND owner_guid > 0;",
+        "DELETE FROM acore_characters.character_pet WHERE owner NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.pet_aura WHERE guid NOT IN (SELECT id FROM acore_characters.character_pet);",
+        "DELETE FROM acore_characters.pet_spell WHERE guid NOT IN (SELECT id FROM acore_characters.character_pet);",
+        "DELETE FROM acore_characters.pet_spell_cooldown WHERE guid NOT IN (SELECT id FROM acore_characters.character_pet);",
+        "DELETE FROM acore_characters.character_queststatus WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_queststatus_rewarded WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_reputation WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_skills WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_social WHERE friend NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_spell WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_spell_cooldown WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.character_talent WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.corpse WHERE guid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.groups WHERE leaderGuid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.group_member WHERE memberGuid NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.mail WHERE receiver NOT IN (SELECT guid FROM acore_characters.characters);",
+        "DELETE FROM acore_characters.mail_items WHERE receiver NOT IN (SELECT guid FROM acore_characters.characters);",
+        f"DELETE FROM acore_auth.account WHERE id IN ({ids_str});",
+        f"DELETE FROM acore_auth.account_access WHERE id IN ({ids_str});"
+    ]
+
+    try:
+        for query in queries:
+            subprocess.run(
+                ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", query],
+                cwd=CORE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+        print("Done cleaning up excess bot accounts.")
+    except Exception as e:
+        print(f"Warning: Failed to clean up excess bot accounts: {e}")
+
+
 def bot_population_preset_action(preset_name: str, min_bots: int, max_bots: int):
     print(f"\nConfiguring Bot Population: {preset_name} [{min_bots}-{max_bots}]...")
+
+    active_val = safe_input("Enter active bot percentage (0-100, default 100): ").strip()
+    active_alone = 100
+    if active_val:
+        try:
+            active_alone = int(active_val)
+            if active_alone < 0 or active_alone > 100:
+                print("\nInvalid input: Percentage must be between 0 and 100. Using default of 100.")
+                active_alone = 100
+        except ValueError:
+            print("\nInvalid input: Percentage must be an integer. Using default of 100.")
+            active_alone = 100
+
     if ConfigManager.update_conf_values({
         "AiPlayerbot.MinRandomBots": str(min_bots),
-        "AiPlayerbot.MaxRandomBots": str(max_bots)
+        "AiPlayerbot.MaxRandomBots": str(max_bots),
+        "AiPlayerbot.BotActiveAlone": str(active_alone)
     }):
         print("\n=====================================================")
         print(f" SUCCESS: Bot population set to {preset_name} [{min_bots}-{max_bots}]")
+        print(f" Active Bot Ratio: {active_alone}% of generated bots active")
         print("=====================================================")
         print(" Newly spawned bot density limits adjusted.")
         print(" Existing bot accounts retain database records unless a purge is executed.")
+        
+        delete_excess_bot_accounts(max_bots)
+
         do_purge = safe_input("\nWould you like to PURGE existing playerbots now to immediately reflect the new population limit? [Y/N]: ").strip().lower()
         if do_purge == 'y':
             purge_bots_sequence({})

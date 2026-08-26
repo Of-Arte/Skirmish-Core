@@ -268,32 +268,38 @@ def test_bot_population_submenu_back():
 
 def test_bot_population_presets_config_mutation():
     """Verify Low, Medium, High bot population choices write correct Min/Max values to playerbots.conf."""
-    # Test Low Preset [100-300]
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "1", "n", "", "0", "0", "0"])
+    # Test Low Preset [100-300] with active percentage 30
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "1", "30", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Low [100-300]" in stdout
+    assert "Active Bot Ratio: 30% of generated bots active" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.MinRandomBots = 100" in content
         assert "AiPlayerbot.MaxRandomBots = 300" in content
+        assert "AiPlayerbot.BotActiveAlone = 30" in content
 
-    # Test High Preset [1000-2000]
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "3", "n", "", "0", "0", "0"])
+    # Test High Preset [1000-2000] with active percentage 100
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "3", "100", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to High [1000-2000]" in stdout
+    assert "Active Bot Ratio: 100% of generated bots active" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.MinRandomBots = 1000" in content
         assert "AiPlayerbot.MaxRandomBots = 2000" in content
+        assert "AiPlayerbot.BotActiveAlone = 100" in content
 
-    # Reset to Medium Preset [500-1000]
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "2", "n", "", "0", "0", "0"])
+    # Reset to Medium Preset [500-1000] with active percentage 50
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "2", "50", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Medium [500-1000]" in stdout
+    assert "Active Bot Ratio: 50% of generated bots active" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.MinRandomBots = 500" in content
         assert "AiPlayerbot.MaxRandomBots = 1000" in content
+        assert "AiPlayerbot.BotActiveAlone = 50" in content
 
 
 def test_rpg_weight_preset_config_mutation():
@@ -496,14 +502,16 @@ def test_custom_population_input_validation():
     assert code == 0
     assert "Invalid input: Minimum bot count cannot be greater than maximum bot count." in stdout
 
-    # Valid custom population [450-850]
-    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "4", "450", "850", "n", "", "0", "0", "0"])
+    # Valid custom population [450-850] with active percentage 80
+    stdout, stderr, code = run_menu_py_with_inputs(["3", "1", "4", "450", "850", "80", "n", "", "0", "0", "0"])
     assert code == 0
     assert "SUCCESS: Bot population set to Custom [450-850]" in stdout
+    assert "Active Bot Ratio: 80% of generated bots active" in stdout
     with open(CONF_FILE, "r", encoding="utf-8") as f:
         content = f.read()
         assert "AiPlayerbot.MinRandomBots = 450" in content
         assert "AiPlayerbot.MaxRandomBots = 850" in content
+        assert "AiPlayerbot.BotActiveAlone = 80" in content
 
 
 def test_coop_action_handling():
@@ -717,6 +725,35 @@ def test_generate_srp6_verifier():
     assert len(verifier_hex) == 64
     assert all(c in "0123456789abcdefABCDEF" for c in salt_hex)
     assert all(c in "0123456789abcdefABCDEF" for c in verifier_hex)
+
+
+def test_delete_excess_bot_accounts(monkeypatch):
+    """Verify delete_excess_bot_accounts correctly queries and deletes excess bot accounts."""
+    import skirmish.menu as menu_mod
+    monkeypatch.setattr(menu_mod.DockerService, "get_container_status", lambda svc: "ONLINE")
+
+    calls = []
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        class DummyCompleted:
+            returncode = 0
+            stdout = "30 rndbot30\n31 rndbot31\n32 rndbot32\n"
+            stderr = ""
+        return DummyCompleted()
+
+    monkeypatch.setattr(menu_mod.subprocess, "run", fake_run)
+
+    # Let's say we set max_bots to 100 (needed accounts will be 10 or 12 depending on divisor)
+    # Excess accounts will be rndbot30, rndbot31, rndbot32 (id 30, 31, 32)
+    menu_mod.delete_excess_bot_accounts(100)
+
+    # The first run should query: "SELECT id, username FROM acore_auth.account WHERE username LIKE 'rndbot%';"
+    assert len(calls) > 1
+    # Check that it deletes characters from accounts 30,31,32
+    any_delete_chars = any(isinstance(c, list) and len(c) >= 10 and "DELETE FROM acore_characters.characters WHERE account IN (30,31,32);" in c[9] for c in calls)
+    any_delete_accounts = any(isinstance(c, list) and len(c) >= 10 and "DELETE FROM acore_auth.account WHERE id IN (30,31,32);" in c[9] for c in calls)
+    assert any_delete_chars
+    assert any_delete_accounts
 
 
 
