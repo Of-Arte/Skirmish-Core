@@ -59,10 +59,37 @@ git clone https://github.com/Of-Arte/Skirmish-Core.git
   ```cmd
   menu.cmd
   ```
-- **Linux**: Execute `skirmish/menu.py` using Python 3:
+- **Linux / macOS**: Execute `skirmish/menu.py` using Python 3 (or `./menu.sh`):
   ```bash
   python3 skirmish/menu.py
   ```
+
+#### Control Hub Menu Structure
+```text
+1. Server Controls & Admin
+   ├── 1. Start Server
+   ├── 2. Stop Server
+   ├── 3. Build Server
+   ├── 4. Create Game Account Wizard
+   ├── 5. Admin Console
+   ├── 6. Live Logs
+   ├── 7. Health Check
+   └── 8. Wipe Server Setup
+2. Skirmish Mode [Quick PvP]
+   ├── 1. Bracket 19 [Level 10-19] ... 8. WotLK 80 [Level 70-80]
+   └── 9. Custom Level Range
+3. Expansion Setup
+   ├── 1. Classic WoW [Level 1-60]
+   ├── 2. TBC Mode [Level 1-70]
+   └── 3. WotLK Mode [Level 1-80]
+4. Bot Management & Population
+   ├── 1. Adjust Bot Population Density [Low, Medium, High, Custom]
+   ├── 2. Open World RPG Activity Presets [Balanced, Questers, Grinders, PvP, Idlers]
+   ├── 3. Bot Starting Level Mode [Force Level 1 vs Random Spawns]
+   ├── 4. Reset & Purge Playerbots [Wipe & Respawn]
+   └── 5. Auction House Bot Setup [Interactive Setup Wizard]
+5. Multi-Player Setup [LAN / Public IP Setup]
+```
 
 ### 4. Build Server Image
 Before running the server for the first time, execute the build step to compile and prepare the containers:
