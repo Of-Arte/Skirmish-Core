@@ -28,7 +28,7 @@ SkirmishCore is built directly on top of the [mod-playerbots/azerothcore-wotlk](
 SkirmishCore arrives pre-configured out of the box for a progressive, active single-player and small co-op World PvP experience. Key defaults include:
 
 - **1–60 Classic Locked Progression**: Max bot level is capped at 60 and limited to Kalimdor and Eastern Kingdoms maps (0,1). Expansion content in TBC and WotLK remains progression-gated.
-- **Natural Bot XP & Leveling**: `RandomBotFixedLevel = 0` allows bots to gain experience and level up naturally through questing and combat alongside players.
+- **Natural Bot XP & Leveling**: `RandomBotFixedLevel = 0` is set for full expansion progression (1-60, 1-70, 1-80), allowing bots to level up naturally through questing and combat. Specific Skirmish PvP brackets (e.g. 10-20, 20-30, 70-80) automatically set `RandomBotFixedLevel = 1` to keep bots locked within their bracket level range.
 - **Dynamic 1–60 Level Brackets**: `LevelBrackets.Enabled = 1` continuously distributes online bots across all leveling brackets 1–9, 10–19, 20–29, 30–39, 40–49, 50–59, and 60 across open world questing hotspots, dungeons, and capitals.
 - **Independent Bot Level Scaling**: `SyncLevelWithPlayers = 0` ensures lower-level players encounter a fully populated world of all level ranges rather than scaling the world exclusively around player level.
 - **High Bot Population Density**: Default bot population range is tuned to 1,000–2,000 active bots for a bustling MMO feel.
@@ -75,20 +75,18 @@ git clone https://github.com/Of-Arte/Skirmish-Core.git
    ├── 6. Live Logs
    ├── 7. Health Check
    └── 8. Wipe Server Setup
-2. Skirmish Mode [Quick PvP]
-   ├── 1. Bracket 19 [Level 10-19] ... 8. WotLK 80 [Level 70-80]
-   └── 9. Custom Level Range
-3. Expansion Setup
+2. Expansion Setup
    ├── 1. Classic WoW [Level 1-60]
    ├── 2. TBC Mode [Level 1-70]
    └── 3. WotLK Mode [Level 1-80]
-4. Bot Management & Population
+3. Bot Management & Population
    ├── 1. Adjust Bot Population Density [Low, Medium, High, Custom]
-   ├── 2. Open World RPG Activity Presets [Balanced, Questers, Grinders, PvP, Idlers]
-   ├── 3. Bot Starting Level Mode [Force Level 1 vs Random Spawns]
-   ├── 4. Reset & Purge Playerbots [Wipe & Respawn]
-   └── 5. Auction House Bot Setup [Interactive Setup Wizard]
-5. Multi-Player Setup [LAN / Public IP Setup]
+   ├── 2. Skirmish Mode [Quick PvP] [Brackets 10-20 to 70-80, Custom Range]
+   ├── 3. Open World PvP & World Activity Presets [Balanced, Questers, Grinders, PvP, Idlers]
+   ├── 4. Bot Starting Level Mode [Force Level 1 vs Random Spawns]
+   ├── 5. Reset & Purge Playerbots [Wipe & Respawn]
+   └── 6. Auction House Bot Setup [Interactive Setup Wizard]
+4. Multi-Player Setup [LAN / Public IP Setup]
 ```
 
 ### 4. Build Server Image
@@ -115,7 +113,7 @@ If you experience difficulties logging into the server:
    ```text
    set realmlist 127.0.0.1
    ```
-3. **LAN / Co-Op Access**: If hosting for friends on your local network or VPN, select **5. Multi-Player Setup** and enter your local IP. Connecting players must set their `realmlist.wtf` to that IP address:
+3. **LAN / Co-Op Access**: If hosting for friends on your local network or VPN, select **4. Multi-Player Setup** and enter your local IP. Connecting players must set their `realmlist.wtf` to that IP address:
    ```text
    set realmlist <YOUR_SERVER_IP>
    ```
@@ -128,7 +126,7 @@ All server and module configuration override files are located under the `env/di
 
 ### Auction House Bot Setup (Optional)
 By default, standard playerbots interact with the Auction House naturally. If you wish to enable the dedicated `mod-ah-bot` system to automatically populate or buyout AH listings:
-1. Launch `menu.cmd` -> Select **4. Bot Management & Population** -> **5. Auction House Bot Setup**.
+1. Launch `menu.cmd` -> Select **3. Bot Management & Population** -> **6. Auction House Bot Setup**.
 2. Select **1. Interactive AH-Bot Setup Wizard (Recommended)**.
 3. Follow the 3-step wizard prompts to automatically create the account, log into WoW to create your character (suggested name: `Auctioneer`), and auto-link your character to AH Bot!
 

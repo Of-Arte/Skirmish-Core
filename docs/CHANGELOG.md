@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.8] - 2026-08-26
+
+### Skirmish PvP Bracket & Fixed Level Alignment
+- Configured dynamic `AiPlayerbot.RandomBotFixedLevel` rules in `skirmish/menu.py`:
+  - **Full Expansion Progression (1-60 Classic, 1-70 TBC, 1-80 WotLK)**: `AiPlayerbot.RandomBotFixedLevel = 0` (bots gain experience and level up naturally through questing and combat).
+  - **Skirmish PvP Brackets (e.g. 10-20, 20-30, 30-40, 40-50, 50-60, 60-70, 70-80)**: `AiPlayerbot.RandomBotFixedLevel = 1` (bots remain locked within their bracket level range without gaining XP).
+- Updated Skirmish Mode Setup sub-menu choices in `skirmish/menu.py` to present 10-level differential PvP brackets: `Bracket 10-20`, `Bracket 20-30`, `Bracket 30-40`, `Bracket 40-50`, `Bracket 50-60`, `Bracket 60-70`, `Bracket 70-80`, and `Custom Level Range`.
+- Ensured expansion setup and skirmish presets synchronize map unlocks (`0,1` for <=60, `0,1,530` for 61-70, `0,1,530,571` for 71-80) and Individual Progression settings (`StartingProgression`, `ProgressionLimit`, `BotAccountsMaxLevel`).
+- Expanded unit tests in `tests/test_menu_py.py` and `tests/test_menu.py` covering 10-level brackets, level 1 natural leveling (`RandomBotFixedLevel = 0`), and locked bracket leveling (`RandomBotFixedLevel = 1`).
+
+
+## [1.0.7] - 2026-08-26
+
+### Menu Hierarchy & Terminology Refinement
+- Reorganized `skirmish/menu.py` menu hierarchy: moved **Skirmish Mode [Quick PvP]** into **Bot Management & Population** as a sub-menu option (Option 2).
+- Updated menu titles, option descriptions, and console logs to emphasize **PvP activity** instead of RPG activity:
+  - Renamed "Open World RPG Activity Presets" to **"Open World PvP & World Activity Presets"**.
+  - Updated preset Option 1 to **"Balanced PvP & World Activity (Default)"**.
+  - Updated `rpg_weight_preset_action` print messages to display `"Open World PvP & World Activity"`.
+- Re-indexed main menu and sub-menu option numbers in `skirmish/menu.py`, `README.md`, `docs/CONFIGURATION.md`, and unit tests (`tests/test_menu_py.py` and `tests/test_menu.py`).
+
+
 ## [1.0.6] - 2026-08-26
 
 ### Skirmish Mode & Individual Progression Alignment

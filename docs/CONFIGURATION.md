@@ -29,19 +29,19 @@ Configuration path: `env/dist/etc/modules/playerbots.conf`
 
 ### 1. Expansion Progression & Menu Selection
 
-You can easily switch expansion modes using **Option 3 (Expansion Setup)** in `python menu.py` (or `menu.cmd`) or manually updating `AiPlayerbot.RandomBotMaxLevel` and `AiPlayerbot.RandomBotMaps` in `playerbots.conf`:
+You can easily switch expansion modes using **Option 2 (Expansion Setup)** in `python menu.py` (or `menu.cmd`) or manually updating `AiPlayerbot.RandomBotMaxLevel` and `AiPlayerbot.RandomBotMaps` in `playerbots.conf`:
 
-* **Classic Mode (Option 3 -> 1)**: Max Level 60 | Kalimdor & Eastern Kingdoms (`0,1`).
+* **Classic Mode (Option 2 -> 1)**: Max Level 60 | Kalimdor & Eastern Kingdoms (`0,1`).
   ```ini
   AiPlayerbot.RandomBotMaxLevel = 60
   AiPlayerbot.RandomBotMaps = 0,1
   ```
-* **The Burning Crusade (Option 3 -> 2)**: Max Level 70 | Unlocks Outland (`0,1,530`).
+* **The Burning Crusade (Option 2 -> 2)**: Max Level 70 | Unlocks Outland (`0,1,530`).
   ```ini
   AiPlayerbot.RandomBotMaxLevel = 70
   AiPlayerbot.RandomBotMaps = 0,1,530
   ```
-* **Wrath of the Lich King (Option 3 -> 3)**: Max Level 80 | Unlocks Northrend (`0,1,530,571`).
+* **Wrath of the Lich King (Option 2 -> 3)**: Max Level 80 | Unlocks Northrend (`0,1,530,571`).
   ```ini
   AiPlayerbot.RandomBotMaxLevel = 80
   AiPlayerbot.RandomBotMaps = 0,1,530,571
@@ -112,7 +112,7 @@ AiPlayerbot.RandombotStartingLevel = 1
 #### How to Reset Bots via Interactive Menu:
 
 ##### Automated Clean Slate (Wipe & Regenerate All Bots)
-1. Run `python menu.py` -> **Option 4 (Bot Management & Population)**.
-2. Select **Option 4 (Reset & Purge Playerbots)**.
+1. Run `python menu.py` -> **Option 3 (Bot Management & Population)**.
+2. Select **Option 5 (Reset & Purge Playerbots)**.
 3. The menu system will automatically handle setting `DeleteRandomBotAccounts = 1`, restarting the server, performing cleanup, and returning `DeleteRandomBotAccounts = 0`.
 
