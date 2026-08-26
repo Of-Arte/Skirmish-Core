@@ -7,8 +7,8 @@
  |_____/|_|\_\_____|_|  \_\_|  |_|_____|_____/|_|  |_|\_____\____/|_|  \_\______|
 ```
 
-[![Docker CI](https://img.shields.io/github/actions/workflow/status/Of-Arte/SkirmishCore-wotlk/docker-ci.yml?branch=master&label=Docker%20CI&logo=docker&logoColor=white)](https://github.com/Of-Arte/SkirmishCore-wotlk/actions/workflows/docker-ci.yml)
-[![Pytest](https://img.shields.io/github/actions/workflow/status/Of-Arte/SkirmishCore-wotlk/test-suite.yml?branch=master&label=Pytest%20Suite&logo=pytest&logoColor=white)](https://github.com/Of-Arte/SkirmishCore-wotlk/actions/workflows/test-suite.yml)
+[![Docker CI](https://img.shields.io/github/actions/workflow/status/Of-Arte/Skirmish-Core/docker-ci.yml?branch=dev&label=Docker%20CI&logo=docker&logoColor=white)](https://github.com/Of-Arte/Skirmish-Core/actions/workflows/docker-ci.yml)
+[![Pytest](https://img.shields.io/github/actions/workflow/status/Of-Arte/Skirmish-Core/test-suite.yml?branch=dev&label=Pytest%20Suite&logo=pytest&logoColor=white)](https://github.com/Of-Arte/Skirmish-Core/actions/workflows/test-suite.yml)
 ![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat&logo=python&logoColor=white)
 
 **SkirmishCore** is an AzerothCore Wrath of the Lich King 3.3.5a repack tailored for players seeking an offline World PvP-like WoW experience. Powered by intelligent Playerbots, dynamic economy controls, and an individual progression system.
@@ -42,11 +42,11 @@ SkirmishCore arrives pre-configured out of the box for a progressive, active sin
 Follow these steps in order to install, configure, and launch your server.
 
 ### 1. Clone Repository
-Clone the repository recursively to fetch all included modules:
 ```bash
-git clone --recurse-submodules https://github.com/Of-Arte/SkirmishCore-wotlk.git
+git clone https://github.com/Of-Arte/Skirmish-Core.git
 ```
-*(If cloned without `--recurse-submodules`, the SkirmishCore Control Hub menu will automatically detect and initialize submodules on launch).*
+*(Submodules are automatically detected and initialized by the SkirmishCore Control Hub menu on launch).*
+
 
 ### 2. Prerequisites & System Requirements
 - **Docker Desktop**: Host container engine for running authserver, worldserver, and database instances.

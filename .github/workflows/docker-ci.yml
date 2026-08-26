@@ -2,9 +2,10 @@ name: Docker CI
 
 on:
   push:
-    branches: [ main, master, skirmishcore, Playerbot ]
+    branches: [ main, master, dev, skirmishcore, Playerbot ]
   pull_request:
-    branches: [ main, master, skirmishcore, Playerbot ]
+    branches: [ main, master, dev, skirmishcore, Playerbot ]
+
 
 jobs:
   build:
