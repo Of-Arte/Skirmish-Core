@@ -587,10 +587,6 @@ def start_server_action(context: dict):
 
 
 def stop_server_action(context: dict):
-    if DockerService.get_container_status("ac-worldserver") == "OFFLINE":
-        print("\n[NOTE] SkirmishCore server is already OFFLINE.")
-        return
-
     confirm = safe_input("\nAre you sure you want to stop the server? [Y/N]: ").strip().lower()
     if confirm != 'y':
         print("Stop canceled.")
