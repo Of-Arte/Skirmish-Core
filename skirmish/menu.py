@@ -536,6 +536,22 @@ class DockerService:
 
 class ConfigManager:
     @staticmethod
+    def get_conf_value(key: str, default: str = "", conf_path: str = CONF_FILE) -> str:
+        """Reads a configuration value from a .conf file using UTF-8 encoding."""
+        if not os.path.exists(conf_path):
+            return default
+        try:
+            with open(conf_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            pattern = rf"{re.escape(key)}\s*=\s*([^\r\n]*)"
+            match = re.search(pattern, content)
+            if match:
+                return match.group(1).strip()
+        except Exception:
+            pass
+        return default
+
+    @staticmethod
     def update_conf_values(updates: dict, conf_path: str = CONF_FILE) -> bool:
         """
         Safely updates configuration key-value pairs using python regex and UTF-8 encoding.
@@ -919,26 +935,43 @@ def ahbot_setup_action(context: dict):
     print("          AUCTION HOUSE BOT (AHBOT) SETUP")
     print("=====================================================")
     print("AH Bot automatically posts and bids on Auction House items.")
-    print("To run AH Bot, you can assign it to a specific character GUID.")
+    print("To run AH Bot, assign it to a character GUID from your database.")
+
+    current_seller = ConfigManager.get_conf_value("AuctionHouseBot.EnableSeller", "false", conf_path=AHBOT_CONF_FILE)
+    current_buyer = ConfigManager.get_conf_value("AuctionHouseBot.Buyer.Enabled", "false", conf_path=AHBOT_CONF_FILE)
+    current_guid = ConfigManager.get_conf_value("AuctionHouseBot.GUIDs", "0", conf_path=AHBOT_CONF_FILE)
+
+    status_str = "ENABLED" if (current_seller.lower() == "true" or current_buyer.lower() == "true") else "DISABLED"
+    print(f"\n Current Status  : [ {status_str} ]")
+    print(f" Character GUID  : [ {current_guid if current_guid != '0' else '0 (Not Set / Disabled)'} ]")
+    print("-----------------------------------------------------")
+
     print("\nOptions:")
     print("  1. Enable AH Bot (Seller & Buyer)")
     print("  2. Disable AH Bot")
-    print("  3. Set Character GUID")
+    print("  3. Auto-Detect & Select Character GUID from Database")
+    print("  4. Manually Set Character GUID")
+    print("  5. Guide: How to Create an AH Bot Account & Character")
     print("  0. Back")
 
-    choice = safe_input("\nSelect an option [0-3]: ").strip()
+    choice = safe_input("\nSelect an option [0-5]: ").strip()
     if choice == "1":
-        guid = safe_input("Enter Character GUID for AH Bot (or press Enter to keep current): ").strip()
+        if current_guid == "0" or not current_guid:
+            print("\n[!] WARNING: Character GUID is currently 0 (Not Set).")
+            prompt_guid = safe_input("Do you want to enter a Character GUID now? [y/N]: ").strip().lower()
+            if prompt_guid == 'y':
+                guid = safe_input("Enter Character GUID: ").strip()
+                if guid:
+                    current_guid = guid
         updates = {
             "AuctionHouseBot.EnableSeller": "true",
-            "AuctionHouseBot.Buyer.Enabled": "true"
+            "AuctionHouseBot.Buyer.Enabled": "true",
+            "AuctionHouseBot.GUIDs": current_guid if current_guid else "0"
         }
-        if guid:
-            updates["AuctionHouseBot.GUIDs"] = guid
         if ConfigManager.update_conf_values(updates, conf_path=AHBOT_CONF_FILE):
             DockerService.reload_worldserver_config()
             print("\n=====================================================")
-            print(" SUCCESS: AH Bot Enabled!")
+            print(f" SUCCESS: AH Bot Enabled! (Character GUID: {current_guid})")
             print("=====================================================")
     elif choice == "2":
         updates = {
@@ -951,6 +984,52 @@ def ahbot_setup_action(context: dict):
             print(" SUCCESS: AH Bot Disabled!")
             print("=====================================================")
     elif choice == "3":
+        print("\nQuerying characters from database...", flush=True)
+        chars = []
+        if DockerService.get_container_status("ac-database") == "ONLINE":
+            try:
+                res = subprocess.run(
+                    ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e", "SELECT guid, name, account FROM acore_characters.characters;"],
+                    cwd=CORE_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace"
+                )
+                if res.returncode == 0 and res.stdout:
+                    lines = [line.strip() for line in res.stdout.strip().splitlines() if line.strip()]
+                    if len(lines) > 1:
+                        for line in lines[1:]:
+                            parts = line.split()
+                            if len(parts) >= 3:
+                                chars.append({"guid": parts[0], "name": parts[1], "account": parts[2]})
+            except Exception as e:
+                print(f"Database query error: {e}")
+
+        if chars:
+            print("\n=====================================================")
+            print("          CHARACTERS FOUND IN DATABASE")
+            print("=====================================================")
+            print(f"  {'GUID':<8} | {'Character Name':<20} | {'Account ID':<10}")
+            print("  ---------------------------------------------------")
+            for c in chars:
+                print(f"  {c['guid']:<8} | {c['name']:<20} | {c['account']:<10}")
+            print("  ---------------------------------------------------")
+            selected_guid = safe_input("\nEnter GUID to assign to AH Bot (or press Enter to cancel): ").strip()
+            if selected_guid:
+                if ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": selected_guid}, conf_path=AHBOT_CONF_FILE):
+                    DockerService.reload_worldserver_config()
+                    print("\n=====================================================")
+                    print(f" SUCCESS: AH Bot Character GUID set to {selected_guid}!")
+                    print("=====================================================")
+        else:
+            print("\n[!] No characters found in database (or database container is OFFLINE).")
+            print("\nTo create a character for AH Bot:")
+            print("  1. Start the server (Option 1 -> 1)")
+            print("  2. Open Worldserver Console (Option 1 -> 6) or log in with a GM account")
+            print("  3. Run command: .account create ahbot password")
+            print("  4. Log into WoW using account 'ahbot' (password: 'password').")
+            print("  5. Create a new character (Suggested name: 'Auctioneer').")
+            print("     [IMPORTANT] Do NOT enter the game world with this character!")
+            print("                 Simply create it at character selection screen, then exit.")
+            print("  6. Re-run this menu option to auto-detect your character's GUID!")
+    elif choice == "4":
         guid = safe_input("Enter Character GUID for AH Bot: ").strip()
         if guid:
             if ConfigManager.update_conf_values({"AuctionHouseBot.GUIDs": guid}, conf_path=AHBOT_CONF_FILE):
@@ -958,6 +1037,22 @@ def ahbot_setup_action(context: dict):
                 print("\n=====================================================")
                 print(f" SUCCESS: AH Bot Character GUID set to {guid}!")
                 print("=====================================================")
+    elif choice == "5":
+        print("\n=====================================================")
+        print("    HOW TO CREATE AN AH BOT CHARACTER & GET GUID")
+        print("=====================================================")
+        print("1. Start server stack and open Worldserver Console (Option 1 -> 6)")
+        print("   or log into game on a GM account.")
+        print("\n2. Create an account for AH Bot:")
+        print("   .account create ahbot password")
+        print("\n3. Log into WoW using account 'ahbot' (password: 'password').")
+        print("\n4. Create a new character (Suggested name: 'Auctioneer').")
+        print("   [!] IMPORTANT: Do NOT enter the game world with this character!")
+        print("       Creating the character at the selection screen is sufficient.")
+        print("       (Entering the game world on an AH Bot character can cause issues)")
+        print("\n5. Select your Character GUID:")
+        print("   Return to this menu and choose Option 3 ('Auto-Detect & Select Character GUID').")
+        print("=====================================================")
 
 
 def bot_starting_level_action(context: dict):

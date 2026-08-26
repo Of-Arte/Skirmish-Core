@@ -261,6 +261,19 @@ def test_bot_starting_level_mode_config_mutation():
         assert "AiPlayerbot.DisableRandomLevels = 0" in content
 
 
+def test_ahbot_setup_menu():
+    """Verify AH Bot setup submenu renders status, guide, and manual GUID configuration."""
+    # Option 4 (Bot Management) -> Option 5 (AH Bot Setup) -> Option 5 (Guide) -> Back -> Back
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "5", "", "0", "0"])
+    assert code == 0
+    assert "AUCTION HOUSE BOT (AHBOT) SETUP" in stdout
+    assert "HOW TO CREATE AN AH BOT CHARACTER & GET GUID" in stdout
 
+    # Option 4 (Bot Management) -> Option 5 (AH Bot Setup) -> Option 4 (Manual GUID set to 55) -> Back -> Back
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "4", "55", "", "0", "0"])
+    assert code == 0
+    assert "SUCCESS: AH Bot Character GUID set to 55!" in stdout
 
-
+    ahbot_conf = os.path.join(REPO_ROOT, "env", "dist", "etc", "modules", "mod_ahbot.conf")
+    with open(ahbot_conf, "r", encoding="utf-8") as f:
+        assert "AuctionHouseBot.GUIDs = 55" in f.read()
