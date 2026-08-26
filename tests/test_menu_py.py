@@ -538,11 +538,17 @@ def test_coop_action_handling():
     assert code == 0
     assert "Invalid input: Address must be a valid IP address or hostname." in stdout
 
-    # Valid IP format while offline (user declines starting server)
+    # Valid IP format while offline, user declines warning
     stdout, stderr, code = run_menu_py_with_inputs(["4", "192.168.1.100", "n", "", "0"])
+    assert code == 0
+    assert "Address update canceled." in stdout
+
+    # Valid IP format while offline, user accepts warning but declines starting server
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "192.168.1.100", "y", "n", "", "0"])
     assert code == 0
     assert "Database container is currently OFFLINE" in stdout
     assert "Address update canceled." in stdout
+
 
 
 def test_config_manager_comment_handling(tmp_path):

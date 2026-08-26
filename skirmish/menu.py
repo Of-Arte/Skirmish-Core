@@ -976,6 +976,30 @@ def coop_action(context: dict):
         print("\nInvalid input: Address must be a valid IP address or hostname.")
         return
 
+    # Check if the IP is not a standard loopback address
+    is_loopback = new_ip in ("127.0.0.1", "localhost")
+    if not is_loopback:
+        print("\n=====================================================")
+        print("  [!] WARNING: LAN / WAN MULTI-PLAYER CONNECTIVITY")
+        print("=====================================================")
+        print(" 1. FIREWALL & PORT BINDING:")
+        print("    Ensure ports 3724 (TCP - auth) and 8085 (TCP/UDP - world)")
+        print("    are open in Windows Defender Firewall (or your host firewall)")
+        print("    to allow incoming connections from other players.")
+        print("\n 2. HOST CLIENT ROUTING (NAT LOOPBACK / HAIRPINNING):")
+        print(f"    By setting realmlist.address to '{new_ip}':")
+        print("    - All authenticated clients (including on this host machine)")
+        print(f"      will be redirected to connect to '{new_ip}'.")
+        print("    - If your router lacks NAT Loopback, or if host firewall blocks")
+        print(f"      local connections to '{new_ip}', host client connection will fail.")
+        print(f"    - WORKAROUND: Ensure your local WoW client points realmlist.wtf")
+        print(f"      directly to '{new_ip}' rather than '127.0.0.1'.")
+        print("=====================================================")
+        confirm_update = safe_input(f"\nDo you want to proceed with updating the server IP to '{new_ip}'? [y/N]: ").strip().lower()
+        if confirm_update != 'y':
+            print("Address update canceled.")
+            return
+
     if DockerService.get_container_status("ac-database") == "OFFLINE":
         print("\n[!] WARNING: Database container is currently OFFLINE.")
         print("    Updating server address requires the database to be running.")
@@ -1003,6 +1027,7 @@ def coop_action(context: dict):
         print(f"       set realmlist {new_ip}")
     else:
         print(f"\nWarning: Could not update server address in database: {res.stderr}")
+
 
 
 
