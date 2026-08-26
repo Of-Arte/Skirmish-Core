@@ -1155,6 +1155,26 @@ def ahbot_interactive_wizard(context: dict):
     print("character creation, and auto-link your character to AH Bot.")
     print("-----------------------------------------------------")
 
+    ws_online = DockerService.get_container_status("ac-worldserver") == "ONLINE"
+    db_online = DockerService.get_container_status("ac-database") == "ONLINE"
+
+    if not ws_online and not db_online:
+        print("\n[!] NOTE: SkirmishCore server stack is currently OFFLINE.")
+        print("    The server needs to be running so you can log into WoW to create your bot character.")
+        start_now = safe_input("\nWould you like to start the server stack now? [y/N]: ").strip().lower()
+        if start_now == 'y':
+            if DockerService.start_stack():
+                print("\nWaiting 10 seconds for server initialization...")
+                time.sleep(10)
+                ws_online = DockerService.get_container_status("ac-worldserver") == "ONLINE"
+                db_online = DockerService.get_container_status("ac-database") == "ONLINE"
+            else:
+                print("\n[!] Could not start server stack. Please start the server (Main Menu -> Option 1 -> 1) first.")
+                return
+        else:
+            print("\n[!] Wizard canceled. Please start the server stack before configuring AH Bot.")
+            return
+
     # Step 1: Account Setup
     user = safe_input("\n[Step 1/3] Enter AH Bot account username [default: ahbot]: ").strip() or "ahbot"
     password = safe_input(f"           Enter password for account '{user}' [default: password]: ").strip() or "password"
@@ -1162,7 +1182,7 @@ def ahbot_interactive_wizard(context: dict):
     print(f"\nCreating account '{user}' in server database...", flush=True)
     account_created = False
 
-    if DockerService.get_container_status("ac-worldserver") == "ONLINE":
+    if ws_online:
         try:
             res = subprocess.run(
                 ["docker", "compose", "exec", "-T", "ac-worldserver", "bash", "-c", f"echo 'account create {user} {password}' | nc -w 1 127.0.0.1 7878"],
@@ -1172,7 +1192,7 @@ def ahbot_interactive_wizard(context: dict):
         except Exception:
             pass
 
-    if not account_created and DockerService.get_container_status("ac-database") == "ONLINE":
+    if not account_created and db_online:
         try:
             res = subprocess.run(
                 ["docker", "compose", "exec", "-T", "ac-database", "mysql", "-uroot", "-ppassword", "-e",
@@ -1183,7 +1203,10 @@ def ahbot_interactive_wizard(context: dict):
         except Exception:
             pass
 
-    print(f"  [OK] Account '{user}' configured!")
+    if account_created:
+        print(f"  [OK] Account '{user}' configured!")
+    else:
+        print(f"  [NOTE] Account '{user}' will be initialized when server finishes starting.")
 
     # Step 2: Character Creation Guide
     print("\n=====================================================")

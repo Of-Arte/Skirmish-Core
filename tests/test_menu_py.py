@@ -293,13 +293,19 @@ def test_bot_starting_level_mode_config_mutation():
 
 def test_ahbot_setup_menu():
     """Verify AH Bot interactive wizard and status options."""
-    # Option 4 (Bot Management) -> Option 5 (AH Bot Setup) -> Option 1 (Wizard) -> User 'ahbot', Pass 'password', Char 'Auctioneer', Option 2 (Manual GUID 55) -> Back -> Back
-    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "1", "ahbot", "password", "Auctioneer", "2", "55", "0", "0"])
+    # Test wizard prompt when server stack is offline
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "1", "n", "0", "0"])
     assert code == 0
     assert "INTERACTIVE AH BOT SETUP WIZARD" in stdout
-    assert "SUCCESS: AH Bot Configured with Manual GUID 55!" in stdout
+    assert "SkirmishCore server stack is currently OFFLINE" in stdout
+
+    # Test option 2 (Enable AH Bot with manual GUID 55)
+    stdout, stderr, code = run_menu_py_with_inputs(["4", "5", "2", "y", "55", "", "0", "0"])
+    assert code == 0
+    assert "SUCCESS: AH Bot Enabled! (Character GUID: 55)" in stdout
 
     ahbot_conf = os.path.join(REPO_ROOT, "env", "dist", "etc", "modules", "mod_ahbot.conf")
     with open(ahbot_conf, "r", encoding="utf-8") as f:
         assert "AuctionHouseBot.GUIDs = 55" in f.read()
+
 
