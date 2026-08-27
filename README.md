@@ -1,3 +1,5 @@
+<div align="center">
+
 ```text
    _____ _  _______ _____  __  __ _____  _____ _    _  _____ ____  _____  ______ 
   / ____| |/ /_   _|  __ \|  \/  |_   _|/ ____| |  | |/ ____/ __ \|  __ \|  ____|
@@ -11,7 +13,10 @@
 [![Pytest](https://img.shields.io/github/actions/workflow/status/Of-Arte/Skirmish-Core/test-suite.yml?branch=dev&label=Pytest%20Suite&logo=pytest&logoColor=white)](https://github.com/Of-Arte/Skirmish-Core/actions/workflows/test-suite.yml)
 ![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat&logo=python&logoColor=white)
 
-**SkirmishCore** is an AzerothCore Wrath of the Lich King 3.3.5a repack tailored for players seeking an offline World PvP-like WoW experience. Powered by intelligent Playerbots, dynamic economy controls, and an individual progression system.
+    
+**SkirmishCore** is an AzerothCore (WOTLK 3.3.5a) repack tailored for players seeking an offline World PvP-like WoW experience. <br>
+Powered by intelligent Playerbots, dynamic economy controls, and an individual progression system.
+</div>
 
 ---
 
@@ -95,7 +100,7 @@ If you experience difficulties logging into the server:
 
 ## Optional
 
-### Auction House Bot Setup (Optional)
+### Auction House Bot Setup
 By default, standard playerbots interact with the Auction House naturally. If you wish to enable the dedicated `mod-ah-bot` system to automatically populate or buyout AH listings:
 1. Launch `menu.cmd` -> Select **3. Bot Management & Population** -> **6. Auction House Bot Setup**.
 2. Select **1. Interactive AH-Bot Setup Wizard (Recommended)**.
@@ -123,7 +128,7 @@ Most modules expose in-game `.help` or status commands accessible in chat or via
 
 ## Documentation
 - [Configuration Guide](docs/CONFIGURATION.md)
-- [Included Modules Inventory](docs/MODULES.md)
+- [Included Modules](docs/MODULES.md)
 - [Contributing Guidelines](docs/CONTRIBUTING.md)
 - [Security Policy](docs/SECURITY.md)
 - [Code of Conduct](docs/CODE_OF_CONDUCT.md)
