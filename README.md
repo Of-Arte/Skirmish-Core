@@ -20,7 +20,7 @@ SkirmishCore is built directly on top of the [mod-playerbots/azerothcore-wotlk](
 ---
 
 <p align="center">
-  <img src="./docs/assets/menu.png?raw=true" alt="SkirmishCore Interactive Control Hub" width="600" />
+  <img src="./docs/assets/menu.png?raw=true&v=2" alt="SkirmishCore Interactive Control Hub" width="600" />
 </p>
 
 ## Default Server Configuration
@@ -49,10 +49,9 @@ git clone https://github.com/Of-Arte/Skirmish-Core.git
 
 
 ### 2. Prerequisites & System Requirements
-- **Docker Desktop**: Host container engine for running authserver, worldserver, and database instances.
-- **Python 3.8+**: Required runtime for the object-oriented SkirmishCore Control Hub menu scripts.
-- **Pytest**: Optional. Test framework used for developer test suite (`pip install -r tests/requirements-test.txt`).
-
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**: Container engine used to run the authserver, worldserver, and database services.
+- **[Python 3.8+](https://www.python.org/downloads/)**: Runtime required for the SkirmishCore Control Hub menu scripts.
+- **[Pytest](https://docs.pytest.org/)** *(optional)*: Test framework for the developer test suite (`pip install -r tests/requirements-test.txt`).
 
 ### 3. Launch Control Hub Menu
 - **Windows (Primary)**: Double-click or run `menu.cmd` from the root directory:
