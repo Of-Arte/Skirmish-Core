@@ -13,28 +13,27 @@
 
 **SkirmishCore** is an AzerothCore Wrath of the Lich King 3.3.5a repack tailored for players seeking an offline World PvP-like WoW experience. Powered by intelligent Playerbots, dynamic economy controls, and an individual progression system.
 
-SkirmishCore is built directly on top of the [mod-playerbots/azerothcore-wotlk](https://github.com/mod-playerbots/azerothcore-wotlk) fork of AzerothCore.
-
-> **Disclaimer:** This is an independent repack project and is not officially affiliated with AzerothCore or any module developers. Created by a solo developer for personal use and to share with friends.
-
 ---
 
 <p align="center">
   <img src="./docs/assets/menu.png?raw=true&v=2" alt="SkirmishCore Interactive Control Hub" width="600" />
 </p>
 
-## Default Server Configuration
+## Default Configuration
 
-SkirmishCore arrives pre-configured out of the box for a progressive, active single-player and small co-op World PvP experience. Key defaults include:
+**SkirmishCore arrives pre-configured out of the box for a progressive, active single-player and small co-op World PvP experience.**<br>
+> **Note**: All configuration files are located under the `env/dist/etc/` directory. See the [configuration guide](http://github.com/Of-Arte/Skirmish-Core/blob/Playerbot/docs/CONFIGURATION.md) for details.
 
-- **1–60 Classic Locked Progression**: Max bot level is capped at 60 and limited to Kalimdor and Eastern Kingdoms maps (0,1). Expansion content in TBC and WotLK remains progression-gated.
-- **Natural Bot XP & Leveling**: `RandomBotFixedLevel = 0` is set for full expansion progression (1-60, 1-70, 1-80), allowing bots to level up naturally through questing and combat. Specific Skirmish PvP brackets (e.g. 10-20, 20-30, 70-80) automatically set `RandomBotFixedLevel = 1` to keep bots locked within their bracket level range.
-- **Dynamic 1–60 Level Brackets**: `LevelBrackets.Enabled = 1` continuously distributes online bots across all leveling brackets 1–9, 10–19, 20–29, 30–39, 40–49, 50–59, and 60 across open world questing hotspots, dungeons, and capitals.
-- **Independent Bot Level Scaling**: `SyncLevelWithPlayers = 0` ensures lower-level players encounter a fully populated world of all level ranges rather than scaling the world exclusively around player level.
-- **High Bot Population Density**: Default bot population range is tuned to 1,000–2,000 active bots for a bustling MMO feel.
-- **Automated Auction House & Economy**: System accounts (`AHSELLER`) and character seeds (`Auctioneer`) are automatically configured to drive an active in-game auction house.
-- **Player Expansion Gating**: Includes `mod-individual-progression` so human players progress through classic raid tiers and attunements naturally before unlocking expansion content.
+**Key features:**
 
+- **Classic Locked**: Max bot level is capped at 60 and limited to Kalimdor and Eastern Kingdoms maps (0,1).
+- **Auction House Bot**: A dedicated AH bot character can run in-game economy autonomously; This can be activated through the menu.
+- **GM Island Vendor Mall**: A full item vendor mall on GM Island accessible to Admin accounts out of the box.
+- **Expansion Gating**: Takes human players through Classic raid tiers before unlocking Outland or Northrend content.
+- **High Bot Population Density**: Default bot population is tuned to 1,000–2,000 active bots for a bustling MMO feel.
+- **Natural Leveling & Exploration**: Bots level from 1–60 through questing and combat by default.
+- **Dynamic Level Brackets**: Bots are distributed across all leveling brackets, populating the open world so the world always feels alive.
+> Want a F R E S H launch experience? Select **3. Bot Management → 4. Bot Starting Level → 1. Force Level 1 Spawns**
 ---
 
 ## Installation & Setup
@@ -62,31 +61,6 @@ git clone https://github.com/Of-Arte/Skirmish-Core.git
   ```bash
   python3 skirmish/menu.py
   ```
-
-#### Control Hub Menu Structure
-```text
-1. Server Controls & Admin
-   ├── 1. Start Server
-   ├── 2. Stop Server
-   ├── 3. Build Server
-   ├── 4. Create Game Account Wizard
-   ├── 5. Admin Console
-   ├── 6. Live Logs
-   ├── 7. Health Check
-   └── 8. Wipe Server Setup
-2. Expansion Setup
-   ├── 1. Classic WoW [Level 1-60]
-   ├── 2. TBC Mode [Level 1-70]
-   └── 3. WotLK Mode [Level 1-80]
-3. Bot Management & Population
-   ├── 1. Adjust Bot Population Density [Low, Medium, High, Custom]
-   ├── 2. Skirmish Mode [Quick PvP] [Brackets 10-20 to 70-80, Custom Range]
-   ├── 3. Open World PvP & World Activity Presets [Balanced, Questers, Grinders, PvP, Idlers]
-   ├── 4. Bot Starting Level Mode [Force Level 1 vs Random Spawns]
-   ├── 5. Reset & Purge Playerbots [Wipe & Respawn]
-   └── 6. Auction House Bot Setup [Interactive Setup Wizard]
-4. Multi-Player Setup [LAN / Public IP Setup]
-```
 
 ### 4. Build Server Image
 Before running the server for the first time, execute the build step to compile and prepare the containers:
@@ -119,9 +93,7 @@ If you experience difficulties logging into the server:
 
 ---
 
-## Configuration
-
-All server and module configuration override files are located under the `env/dist/etc/` directory.
+## Optional
 
 ### Auction House Bot Setup (Optional)
 By default, standard playerbots interact with the Auction House naturally. If you wish to enable the dedicated `mod-ah-bot` system to automatically populate or buyout AH listings:
