@@ -16,13 +16,24 @@
     
 **SkirmishCore** is an AzerothCore (WOTLK 3.3.5a) repack tailored for players seeking an offline World PvP-like WoW experience. <br>
 Powered by intelligent Playerbots, dynamic economy controls, and an individual progression system.
-</div>
+
+
+
+[![Watch Demo](https://img.shields.io/badge/Watch-Video%20Demo-1ab7ea?logo=vimeo&logoColor=white)](https://vimeo.com/1221700236)
+
 
 ---
 
-<p align="center">
-  <img src="./docs/assets/menu.png?raw=true&v=2" alt="SkirmishCore Interactive Control Hub" width="600" />
+<p>
+
+![SkirmishCore Gameplay](https://i.imgur.com/moONtxw.gif)
+
+---
+
+![SkirmishCore Menu](docs/assets/menu.png?raw=true&v=2)
+
 </p>
+</div>
 
 ## Default Configuration
 
@@ -134,4 +145,3 @@ Most modules expose in-game `.help` or status commands accessible in chat or via
 - [Code of Conduct](docs/CODE_OF_CONDUCT.md)
 - [Attribution Notice](docs/NOTICE.md)
 - [Changelog](docs/CHANGELOG.md)
-
